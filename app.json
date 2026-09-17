@@ -1,0 +1,41 @@
+{
+  "expo": {
+    "name": "TechTune Healer",
+    "slug": "techtune-healer",
+    "scheme": "techtune",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "userInterfaceStyle": "light",
+    "splash": {
+      "resizeMode": "contain",
+      "backgroundColor": "#1E40AF"
+    },
+    "assetBundlePatterns": ["**/*"],
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "com.techtune.healer",
+      "infoPlist": {
+        "NSLocationWhenInUseUsageDescription": "TechTune Healer needs your location to find nearby mechanics.",
+        "NSLocationAlwaysUsageDescription": "TechTune Healer needs your location for emergency assistance."
+      }
+    },
+    "android": {
+      "adaptiveIcon": {
+        "backgroundColor": "#1E40AF"
+      },
+      "package": "com.techtune.healer",
+      "permissions": ["ACCESS_FINE_LOCATION", "ACCESS_COARSE_LOCATION"]
+    },
+    "web": {
+      "favicon": ""
+    },
+    "plugins": [
+      [
+        "expo-location",
+        {
+          "locationAlwaysAndWhenInUsePermission": "Allow TechTune Healer to use your location."
+        }
+      ]
+    ]
+  }
+}
