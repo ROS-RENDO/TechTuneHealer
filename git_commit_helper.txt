@@ -1,0 +1,214 @@
+@echo off
+rem Check if Git is initialized. If not, initialize it and link to the new repository.
+if not exist ".git" (
+    echo ==================================================
+    echo       [GIT INITIALIZATION]
+    echo ==================================================
+    echo Git repository not detected. Initializing now...
+    git init
+    git remote add origin https://github.com/ROS-RENDO/TechTuneHealer.git
+    git branch -M main
+    echo Linked repository to: https://github.com/ROS-RENDO/TechTuneHealer.git
+    echo.
+    echo Press any key to continue to selection menu...
+    pause > nul
+)
+
+:menu
+cls
+echo ==================================================
+echo         TECHTUNE HEALER GIT COMMIT HELPER
+echo ==================================================
+echo Select your development day to commit/push:
+echo.
+echo  [1]  Day 1  (Mon) - Eath Sopheavid (DB Schema)
+echo  [2]  Day 2  (Tue) - Eath Sopheavid (DB Seeds)
+echo  [3]  Day 3  (Wed) - Vin Sambrathna (Backend Config)
+echo  [4]  Day 4  (Thu) - Vin Sambrathna (Auth Routes)
+echo  [5]  Day 5  (Fri) - Vin Sambrathna (Express index/Bookings)
+echo  [6]  Day 6  (Sat) - Vin Sambrathna (Shop/Diagnostics)
+echo  [7]  Day 7  (Sun) - Ros Rendo (Expo/Theme Setup)
+echo  [8]  Day 8  (Mon) - Ros Rendo (Navigation/API Client)
+echo  [9]  Day 9  (Tue) - Ros Rendo (UI Components)
+echo  [10] Day 10 (Wed) - Ros Rendo (Zustand Stores)
+echo  [11] Day 11 (Thu) - Kuoch Bunpor (Expo-Router pages)
+echo  [12] Day 12 (Fri) - Kuoch Bunpor (Screens/UIs config)
+echo  [13] Day 13 (Sat) - Shared Team (Presentation Kit)
+echo  [14] Day 14 (Sun) - Shared Team (Internship Report)
+echo  [Q]  Quit
+echo ==================================================
+set /p choice="Enter choice (1-14 or Q): "
+
+if "%choice%"=="1" goto day1
+if "%choice%"=="2" goto day2
+if "%choice%"=="3" goto day3
+if "%choice%"=="4" goto day4
+if "%choice%"=="5" goto day5
+if "%choice%"=="6" goto day6
+if "%choice%"=="7" goto day7
+if "%choice%"=="8" goto day8
+if "%choice%"=="9" goto day9
+if "%choice%"=="10" goto day10
+if "%choice%"=="11" goto day11
+if "%choice%"=="12" goto day12
+if "%choice%"=="13" goto day13
+if "%choice%"=="14" goto day14
+if "%choice%"=="Q" goto quit
+if "%choice%"=="q" goto quit
+goto menu
+
+:day1
+echo.
+echo Running Day 1 commit: Eath Sopheavid (Database Architect)
+git add backend/prisma/schema.prisma
+git commit -m "feat(db): design database schema tables and relationships"
+git push origin main --force
+pause
+goto menu
+
+:day2
+echo.
+echo Running Day 2 commit: Eath Sopheavid (Database Architect)
+git fetch origin main
+git reset origin/main
+git add backend/prisma/seed.ts backend/prisma.config.ts
+git commit -m "feat(db): implement database seeds for test customers, providers, and shop products"
+git push origin main
+pause
+goto menu
+
+:day3
+echo.
+echo Running Day 3 commit: Vin Sambrathna (Backend Lead)
+git fetch origin main
+git reset origin/main
+git add backend/src/lib/ backend/package.json backend/package-lock.json
+git commit -m "feat(backend): configure Prisma client connector and server dependencies"
+git push origin main
+pause
+goto menu
+
+:day4
+echo.
+echo Running Day 4 commit: Vin Sambrathna (Backend Lead)
+git fetch origin main
+git reset origin/main
+git add backend/src/routes/auth.ts backend/src/routes/providers.ts
+git commit -m "feat(backend): build authentication routes and mechanic listing controller"
+git push origin main
+pause
+goto menu
+
+:day5
+echo.
+echo Running Day 5 commit: Vin Sambrathna (Backend Lead)
+git fetch origin main
+git reset origin/main
+git add backend/src/index.ts backend/src/routes/bookings.ts
+git commit -m "feat(backend): set up Express server app listener and booking controller"
+git push origin main
+pause
+goto menu
+
+:day6
+echo.
+echo Running Day 6 commit: Vin Sambrathna (Backend Lead)
+git fetch origin main
+git reset origin/main
+git add backend/src/routes/shop.ts backend/src/routes/diagnostics.ts backend/public/
+git commit -m "feat(backend): implement e-commerce checkout routes and image diagnostic upload routes"
+git push origin main
+pause
+goto menu
+
+:day7
+echo.
+echo Running Day 7 commit: Ros Rendo (Frontend Lead)
+git fetch origin main
+git reset origin/main
+git add src/constants/ App.tsx tsconfig.json package.json package-lock.json
+git commit -m "feat(frontend): initialize React Native app configuration, theme styles, and fonts"
+git push origin main
+pause
+goto menu
+
+:day8
+echo.
+echo Running Day 8 commit: Ros Rendo (Frontend Lead)
+git fetch origin main
+git reset origin/main
+git add src/navigation/ src/services/
+git commit -m "feat(frontend): structure bottom-tab navigation system and axios API service hooks"
+git push origin main
+pause
+goto menu
+
+:day9
+echo.
+echo Running Day 9 commit: Ros Rendo (Frontend Lead)
+git fetch origin main
+git reset origin/main
+git add src/components/
+git commit -m "feat(frontend): design reusable UI components library for buttons and input fields"
+git push origin main
+pause
+goto menu
+
+:day10
+echo.
+echo Running Day 10 commit: Ros Rendo (Frontend Lead)
+git fetch origin main
+git reset origin/main
+git add store/
+git commit -m "feat(frontend): set up global Zustand state management stores for user auth and location"
+git push origin main
+pause
+goto menu
+
+:day11
+echo.
+echo Running Day 11 commit: Kuoch Bunpor (QA & Frontend)
+git fetch origin main
+git reset origin/main
+git add app/
+git commit -m "feat(frontend): configure Expo-Router path links and screen loaders"
+git push origin main
+pause
+goto menu
+
+:day12
+echo.
+echo Running Day 12 commit: Kuoch Bunpor (QA & Frontend)
+git fetch origin main
+git reset origin/main
+git add src/screens/ app.json babel.config.js eslint.config.js sonar-project.properties README.md .env.example .gitignore
+git commit -m "feat(frontend): implement UI screens for mechanic listings, parts shop, and diagnostic results"
+git push origin main
+pause
+goto menu
+
+:day13
+echo.
+echo Running Day 13 commit: Shared Team (Technical Writers)
+git fetch origin main
+git reset origin/main
+git add TechTune_Healer_Presentation_Kit.md images/
+git commit -m "docs: compile master presentation deck slides and script guidelines"
+git push origin main
+pause
+goto menu
+
+:day14
+echo.
+echo Running Day 14 commit: Shared Team (Technical Writers)
+git fetch origin main
+git reset origin/main
+git add TechTune_Healer_Internship_Report.md TechTune_Healer_Commit_Plan_Sprint.csv git_commit_helper.txt
+git commit -m "docs: add final internship report and team git collaboration spreadsheet"
+git push origin main
+pause
+goto menu
+
+:quit
+echo Goodbye!
+exit
