@@ -4,6 +4,7 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { useRouter } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
 import Button from "../../src/components/Button";
+import { AnimatedEntrance } from "../../src/components";
 import {
   colors,
   spacing,
@@ -75,51 +76,56 @@ export default function RoleSelectionScreen() {
   return (
     <SafeAreaView style={styles.container}>
       <View style={styles.content}>
-        {/* Header */}
-        <View style={styles.header}>
-          <TouchableOpacity
-            style={styles.backButton}
-            onPress={() => router.back()}
-          >
-            <Ionicons name="arrow-back" size={24} color={colors.neutral[900]} />
-          </TouchableOpacity>
-        </View>
+        {/* Header & Title */}
+        <AnimatedEntrance delay={0} direction="down">
+          <View style={styles.header}>
+            <TouchableOpacity
+              style={styles.backButton}
+              onPress={() => router.back()}
+            >
+              <Ionicons name="arrow-back" size={24} color={colors.neutral[900]} />
+            </TouchableOpacity>
+          </View>
 
-        {/* Title */}
-        <View style={styles.titleSection}>
-          <Text style={styles.title}>How will you use TechTune?</Text>
-          <Text style={styles.subtitle}>
-            Select your account type to get started
-          </Text>
-        </View>
+          <View style={styles.titleSection}>
+            <Text style={styles.title}>How will you use TechTune?</Text>
+            <Text style={styles.subtitle}>
+              Select your account type to get started
+            </Text>
+          </View>
+        </AnimatedEntrance>
 
         {/* Role Options */}
-        <View style={styles.optionsContainer}>
-          <RoleCard
-            title="Car Owner"
-            description="Find mechanics, book services, and get help with car problems"
-            icon="car-sport-outline"
-            isSelected={selectedRole === "customer"}
-            onPress={() => setSelectedRole("customer")}
-          />
-          <RoleCard
-            title="Service Provider"
-            description="Offer repair services, manage bookings, and grow your business"
-            icon="cog-outline"
-            isSelected={selectedRole === "provider"}
-            onPress={() => setSelectedRole("provider")}
-          />
-        </View>
+        <AnimatedEntrance delay={80} direction="up" style={{ flex: 1 }}>
+          <View style={styles.optionsContainer}>
+            <RoleCard
+              title="Car Owner"
+              description="Find mechanics, book services, and get help with car problems"
+              icon="car-sport-outline"
+              isSelected={selectedRole === "customer"}
+              onPress={() => setSelectedRole("customer")}
+            />
+            <RoleCard
+              title="Service Provider"
+              description="Offer repair services, manage bookings, and grow your business"
+              icon="cog-outline"
+              isSelected={selectedRole === "provider"}
+              onPress={() => setSelectedRole("provider")}
+            />
+          </View>
+        </AnimatedEntrance>
 
         {/* Action Button */}
-        <Button
-          title="Continue"
-          onPress={handleContinue}
-          variant="primary"
-          size="large"
-          fullWidth
-          disabled={!selectedRole}
-        />
+        <AnimatedEntrance delay={160} direction="up">
+          <Button
+            title="Continue"
+            onPress={handleContinue}
+            variant="primary"
+            size="large"
+            fullWidth
+            disabled={!selectedRole}
+          />
+        </AnimatedEntrance>
       </View>
     </SafeAreaView>
   );

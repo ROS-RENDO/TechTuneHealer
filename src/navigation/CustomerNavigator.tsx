@@ -1,3 +1,4 @@
+import { NavigationContainer, NavigationIndependentTree } from "@react-navigation/native";
 import { createNativeStackNavigator } from "@react-navigation/native-stack";
 
 import { createBottomTabNavigator } from "@react-navigation/bottom-tabs";
@@ -15,11 +16,13 @@ import { ProviderDetailScreen } from "../screens/customer/ProviderDetailScreen";
 import { BookingCreateScreen } from "../screens/customer/BookingCreateScreen";
 import { BookingDetailScreen } from "../screens/customer/BookingDetailScreen";
 import { ChatScreen } from "../screens/shared/ChatScreen";
+import { NotificationsScreen } from "../screens/shared/NotificationsScreen";
 import { DiagnosticsScreen } from "../screens/customer/DiagnosticsScreen";
 import { DiagnosticsResultScreen } from "../screens/customer/DiagnosticsResultScreen";
 import { AiDiagnosisResultScreen } from "../screens/customer/AiDiagnosisResultScreen";
 import { EmergencyScreen } from "../screens/customer/EmergencyScreen";
 import { VehicleAddScreen } from "../screens/customer/VehicleAddScreen";
+import { VehiclesScreen } from "../screens/customer/VehiclesScreen";
 import { EditProfileScreen } from "../screens/customer/EditProfileScreen";
 import { ReviewCreateScreen } from "../screens/customer/ReviewCreateScreen";
 import { ShopScreen } from "../screens/customer/ShopScreen";
@@ -27,6 +30,9 @@ import { ProductDetailScreen } from "../screens/customer/ProductDetailScreen";
 import { CartScreen } from "../screens/customer/CartScreen";
 import { CustomerTrackingScreen } from "../screens/customer/CustomerTrackingScreen";
 import { PaymentScreen } from "../screens/customer/PaymentScreen";
+import { GarageScreen } from "../screens/customer/GarageScreen";
+
+import { useTranslation } from "../store";
 
 import type { CustomerTabParamList, CustomerStackParamList } from "./types";
 
@@ -34,8 +40,10 @@ const Tab = createBottomTabNavigator<CustomerTabParamList>();
 const Stack = createNativeStackNavigator<CustomerStackParamList>();
 
 function CustomerTabs() {
+  const { t, language } = useTranslation();
   return (
     <Tab.Navigator
+      key={language}
       screenOptions={({ route }) => ({
         tabBarIcon: ({ focused, color, size }) => {
           let iconName: keyof typeof Ionicons.glyphMap;
@@ -75,17 +83,36 @@ function CustomerTabs() {
         headerShown: false,
       })}
     >
-      <Tab.Screen name="Home" component={HomeScreen} />
-      <Tab.Screen name="Search" component={SearchScreen} />
-      <Tab.Screen name="Bookings" component={BookingsScreen} />
-      <Tab.Screen name="Profile" component={ProfileScreen} />
+      <Tab.Screen
+        name="Home"
+        component={HomeScreen}
+        options={{ tabBarLabel: t("tabHome") }}
+      />
+      <Tab.Screen
+        name="Search"
+        component={SearchScreen}
+        options={{ tabBarLabel: t("tabSearch") }}
+      />
+      <Tab.Screen
+        name="Bookings"
+        component={BookingsScreen}
+        options={{ tabBarLabel: t("tabBookings") }}
+      />
+      <Tab.Screen
+        name="Profile"
+        component={ProfileScreen}
+        options={{ tabBarLabel: t("tabProfile") }}
+      />
     </Tab.Navigator>
   );
 }
 
 export function CustomerNavigator() {
+  const { t, language } = useTranslation();
   return (
-    <Stack.Navigator
+    <NavigationIndependentTree>
+      <NavigationContainer key={language}>
+        <Stack.Navigator
       screenOptions={{
         headerStyle: {
           backgroundColor: colors.white,
@@ -95,6 +122,7 @@ export function CustomerNavigator() {
           fontWeight: "600",
         },
         headerShadowVisible: false,
+        animation: "slide_from_right",
       }}
     >
       <Stack.Screen
@@ -105,43 +133,43 @@ export function CustomerNavigator() {
       <Stack.Screen
         name="ProviderDetail"
         component={ProviderDetailScreen}
-        options={{ title: "Service Provider" }}
+        options={{ title: t("assignedMechanic") }}
       />
       <Stack.Screen
         name="BookingCreate"
         component={BookingCreateScreen}
-        options={{ title: "Book Service" }}
+        options={{ title: t("bookNow") }}
       />
       <Stack.Screen
         name="BookingDetail"
         component={BookingDetailScreen}
-        options={{ title: "Booking Details", headerShown: false }}
+        options={{ title: t("bookingDetails"), headerShown: false }}
       />
       <Stack.Screen
         name="Chat"
         component={ChatScreen}
-        options={{ title: "Chat", headerShown: false }}
+        options={{ title: t("chat"), headerShown: false }}
       />
       <Stack.Screen
         name="Diagnostics"
         component={DiagnosticsScreen}
-        options={{ title: "Car Diagnostics" }}
+        options={{ title: t("diagnosticsTitle") }}
       />
       <Stack.Screen
         name="DiagnosticsResult"
         component={DiagnosticsResultScreen}
-        options={{ title: "Diagnosis Results" }}
+        options={{ title: t("diagnosticsTitle") }}
       />
       <Stack.Screen
         name="AiDiagnosisResult"
         component={AiDiagnosisResultScreen}
-        options={{ title: "AI Scan Result" }}
+        options={{ title: t("diagnosticsTitle") }}
       />
       <Stack.Screen
         name="Emergency"
         component={EmergencyScreen}
         options={{
-          title: "Emergency Assistance",
+          title: t("emergencyTitle"),
           headerStyle: { backgroundColor: colors.error[500] },
           headerTintColor: colors.white,
         }}
@@ -149,22 +177,27 @@ export function CustomerNavigator() {
       <Stack.Screen
         name="VehicleAdd"
         component={VehicleAddScreen}
-        options={{ title: "Add Vehicle" }}
+        options={{ title: t("addVehicle") }}
+      />
+      <Stack.Screen
+        name="Vehicles"
+        component={VehiclesScreen}
+        options={{ title: t("myVehicles") }}
       />
       <Stack.Screen
         name="EditProfile"
         component={EditProfileScreen}
-        options={{ title: "Edit Profile", headerBackTitle: "Back" }}
+        options={{ headerShown: false }}
       />
       <Stack.Screen
         name="Notifications"
-        component={ChatScreen}
-        options={{ title: "Notifications" }}
+        component={NotificationsScreen}
+        options={{ title: t("notifications") }}
       />
       <Stack.Screen
         name="ReviewCreate"
         component={ReviewCreateScreen}
-        options={{ title: "Leave a Review" }}
+        options={{ title: t("leaveReview"), headerShown: false }}
       />
       <Stack.Screen
         name="Shop"
@@ -191,6 +224,13 @@ export function CustomerNavigator() {
         component={PaymentScreen}
         options={{ title: 'Payment', headerShown: false }}
       />
+      <Stack.Screen
+        name="Garage"
+        component={GarageScreen}
+        options={{ headerShown: false }}
+      />
     </Stack.Navigator>
+    </NavigationContainer>
+    </NavigationIndependentTree>
   );
 }

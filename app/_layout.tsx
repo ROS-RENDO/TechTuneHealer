@@ -3,7 +3,7 @@ import { SafeAreaProvider } from "react-native-safe-area-context";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { StatusBar } from "expo-status-bar";
 import { StyleSheet, ActivityIndicator, View } from "react-native";
-import { useAuthStore } from "../src/store";
+import { useAuthStore, useLanguageStore } from "../src/store";
 
 import { useEffect, useState } from "react";
 
@@ -12,6 +12,7 @@ export default function RootLayout() {
   const [authChecked, setAuthChecked] = useState(false);
 
   useEffect(() => {
+    useLanguageStore.getState().initLanguage();
     checkAuth().finally(() => {
       setAuthChecked(true);
     });
@@ -33,7 +34,12 @@ export default function RootLayout() {
     <GestureHandlerRootView style={styles.container}>
       <SafeAreaProvider>
         <StatusBar style="auto" />
-        <Stack screenOptions={{ headerShown: false }} />
+        <Stack
+          screenOptions={{
+            headerShown: false,
+            animation: "slide_from_right",
+          }}
+        />
       </SafeAreaProvider>
     </GestureHandlerRootView>
   );

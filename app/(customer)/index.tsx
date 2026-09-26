@@ -13,7 +13,7 @@ export default function CustomerIndex() {
   const [isReady, setIsReady] = useState(false);
 
   useEffect(() => {
-    if (!isAuthenticated || user?.role !== "customer") {
+    if (!isAuthenticated || user?.role?.toLowerCase() !== "customer") {
       router.replace("/(auth)/welcome");
       return;
     }

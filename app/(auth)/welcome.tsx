@@ -1,7 +1,10 @@
+import React from "react";
 import { View, Text, StyleSheet } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useRouter } from "expo-router";
+import { Ionicons } from "@expo/vector-icons";
 import Button from "../../src/components/Button";
+import { AnimatedEntrance } from "../../src/components";
 import {
   colors,
   spacing,
@@ -10,7 +13,7 @@ import {
 } from "../../src/constants/theme";
 
 interface FeatureItemProps {
-  icon: string;
+  icon: keyof typeof Ionicons.glyphMap;
   title: string;
   description: string;
 }
@@ -19,9 +22,7 @@ function FeatureItem({ icon, title, description }: FeatureItemProps) {
   return (
     <View style={styles.featureItem}>
       <View style={styles.featureIcon}>
-        <Text style={styles.featureIconText}>
-          {icon === "search" ? "🔍" : icon === "alert" ? "🚨" : "🔧"}
-        </Text>
+        <Ionicons name={icon} size={22} color={colors.primary[600]} />
       </View>
       <View style={styles.featureContent}>
         <Text style={styles.featureTitle}>{title}</Text>
@@ -38,54 +39,60 @@ export default function WelcomeScreen() {
     <SafeAreaView style={styles.container}>
       <View style={styles.content}>
         {/* Hero Section */}
-        <View style={styles.heroSection}>
-          <View style={styles.logoContainer}>
-            <View style={styles.logoIcon}>
-              <Text style={styles.logoText}>TH</Text>
+        <AnimatedEntrance delay={0} direction="down">
+          <View style={styles.heroSection}>
+            <View style={styles.logoContainer}>
+              <View style={styles.logoIcon}>
+                <Ionicons name="shield-checkmark" size={38} color={colors.white} />
+              </View>
             </View>
+            <Text style={styles.title}>TechTune Healer</Text>
+            <Text style={styles.subtitle}>
+              Your trusted partner for automotive care
+            </Text>
           </View>
-          <Text style={styles.title}>TechTune Healer</Text>
-          <Text style={styles.subtitle}>
-            Your trusted partner for automotive care
-          </Text>
-        </View>
+        </AnimatedEntrance>
 
-        {/* Features */}
-        <View style={styles.featuresSection}>
-          <FeatureItem
-            icon="search"
-            title="Find Mechanics"
-            description="Locate trusted mechanics near you"
-          />
-          <FeatureItem
-            icon="alert"
-            title="Emergency Help"
-            description="24/7 roadside assistance"
-          />
-          <FeatureItem
-            icon="diagnostic"
-            title="Smart Diagnostics"
-            description="AI-powered car problem detection"
-          />
-        </View>
+        {/* Features (Concise with minimal text) */}
+        <AnimatedEntrance delay={80} direction="up" style={{ flex: 1, justifyContent: "center" }}>
+          <View style={styles.featuresSection}>
+            <FeatureItem
+              icon="search-outline"
+              title="Find Mechanics"
+              description="Locate trusted mechanics near you"
+            />
+            <FeatureItem
+              icon="alert-circle-outline"
+              title="Emergency Help"
+              description="24/7 roadside assistance"
+            />
+            <FeatureItem
+              icon="hardware-chip-outline"
+              title="Smart Diagnostics"
+              description="AI-powered car problem detection"
+            />
+          </View>
+        </AnimatedEntrance>
 
         {/* Actions */}
-        <View style={styles.actionsSection}>
-          <Button
-            title="Get Started"
-            onPress={() => router.push("/(auth)/role-selection")}
-            variant="primary"
-            size="large"
-            fullWidth
-          />
-          <Button
-            title="I already have an account"
-            onPress={() => router.push("/(auth)/login")}
-            variant="ghost"
-            size="large"
-            fullWidth
-          />
-        </View>
+        <AnimatedEntrance delay={160} direction="up">
+          <View style={styles.actionsSection}>
+            <Button
+              title="Get Started"
+              onPress={() => router.push("/(auth)/role-selection")}
+              variant="primary"
+              size="large"
+              fullWidth
+            />
+            <Button
+              title="I already have an account"
+              onPress={() => router.push("/(auth)/login")}
+              variant="ghost"
+              size="large"
+              fullWidth
+            />
+          </View>
+        </AnimatedEntrance>
       </View>
     </SafeAreaView>
   );
@@ -109,17 +116,12 @@ const styles = StyleSheet.create({
     marginBottom: spacing.lg,
   },
   logoIcon: {
-    width: 80,
-    height: 80,
-    borderRadius: 20,
+    width: 76,
+    height: 76,
+    borderRadius: 22,
     backgroundColor: colors.primary[600],
     alignItems: "center",
     justifyContent: "center",
-  },
-  logoText: {
-    fontSize: fontSize["2xl"],
-    fontWeight: fontWeight.bold,
-    color: colors.white,
   },
   title: {
     fontSize: fontSize["3xl"],
@@ -146,13 +148,10 @@ const styles = StyleSheet.create({
   featureIcon: {
     width: 48,
     height: 48,
-    borderRadius: 12,
+    borderRadius: 14,
     backgroundColor: colors.primary[50],
     alignItems: "center",
     justifyContent: "center",
-  },
-  featureIconText: {
-    fontSize: 20,
   },
   featureContent: {
     flex: 1,
@@ -172,3 +171,4 @@ const styles = StyleSheet.create({
     gap: spacing.md,
   },
 });
+

@@ -57,6 +57,8 @@ model ServiceProvider {
   lng           Float?
   address       String?
   isEmergency   Boolean  @default(false)
+  isVerified    Boolean  @default(false)
+  approvalStatus String  @default("PENDING")
   rating        Float    @default(0)
   totalReviews  Int      @default(0)
 

@@ -25,7 +25,14 @@ export type AuthStackParamList = {
 // Customer Tab Navigator
 export type CustomerTabParamList = {
   Home: undefined;
-  Search: undefined;
+  Search:
+    | {
+        category?: string;
+        query?: string;
+        viewMode?: "map" | "list";
+        matchedIssue?: string;
+      }
+    | undefined;
   Bookings: undefined;
   Profile: undefined;
 };
@@ -34,7 +41,12 @@ export type CustomerTabParamList = {
 export type CustomerStackParamList = {
   CustomerTabs: NavigatorScreenParams<CustomerTabParamList>;
   ProviderDetail: { providerId: string };
-  BookingCreate: { providerId: string; isEmergency?: boolean };
+  BookingCreate: {
+    providerId: string;
+    isEmergency?: boolean;
+    serviceType?: string;
+    initialNotes?: string;
+  };
   BookingDetail: { bookingId: string };
   Chat: { bookingId: string };
   Diagnostics: undefined;
@@ -42,6 +54,7 @@ export type CustomerStackParamList = {
   AiDiagnosisResult: undefined;
   Emergency: undefined;
   VehicleAdd: undefined;
+  Vehicles: undefined;
   VehicleEdit: { vehicle: Vehicle };
   EditProfile: undefined;
   Settings: undefined;
@@ -51,7 +64,8 @@ export type CustomerStackParamList = {
   ProductDetail: { productId: string };
   Cart: undefined;
   CustomerTracking: { bookingId: string; mechanicName?: string };
-  Payment: { totalAmount: number; items: { name: string; price: number; quantity: number }[] };
+  Payment: { totalAmount: number; items: { name: string; price: number; quantity: number }[]; bookingId?: string };
+  Garage: { vehicle?: Vehicle; openModal?: boolean } | undefined;
 };
 
 // Provider Tab Navigator
@@ -70,7 +84,10 @@ export type ProviderStackParamList = {
   Reviews: undefined;
   Earnings: undefined;
   Notifications: undefined;
-  MechanicTracking: { bookingId: string };
+  MechanicTracking: {
+    bookingId: string;
+    providerCoords?: { latitude: number; longitude: number } | { lat: number; lng: number };
+  };
 };
 
 // Screen Props Types
@@ -108,8 +125,9 @@ export type ProviderStackScreenProps<T extends keyof ProviderStackParamList> =
   >;
 
 // Declaration merge for useNavigation hook
-declare global {
-  namespace ReactNavigation {
-    interface RootParamList extends RootStackParamList {}
-  }
-}
+// declare global {
+//   namespace ReactNavigation {
+//     interface RootParamList extends RootStackParamList {}
+//   }
+// }
+
