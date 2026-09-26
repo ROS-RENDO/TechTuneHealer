@@ -20,7 +20,7 @@ async function main() {
 
   const hashed = await bcrypt.hash('password123', 10);
 
-  // ── 1. CUSTOMER ──────────────────────────────────────────────────────────────
+  // ── 1. CUSTOMERS ─────────────────────────────────────────────────────────────
   const customer = await prisma.user.create({
     data: {
       name: 'Test Customer',
@@ -30,13 +30,88 @@ async function main() {
       role: 'CUSTOMER',
       vehicles: {
         create: [
-          { make: 'Toyota', model: 'Camry', year: 2020, plateNumber: '2A-1234', color: 'White' },
+          { make: 'Toyota', model: 'Camry', year: 2020, plateNumber: '2A-1234', color: 'Super White' },
           { make: 'Honda',  model: 'Civic', year: 2019, plateNumber: '3B-5678', color: 'Silver' },
         ],
       },
     },
   });
-  console.log(`✅ Customer: ${customer.email} / password123`);
+
+  const customerDara = await prisma.user.create({
+    data: {
+      name: 'Dara Chan',
+      email: 'dara.chan@test.com',
+      phone: '+85512998877',
+      password: hashed,
+      role: 'CUSTOMER',
+      vehicles: {
+        create: [
+          { make: 'Lexus', model: 'RX350 Luxury', year: 2024, plateNumber: '2A-8888', color: 'Sonic Titanium' },
+        ],
+      },
+    },
+  });
+
+  const customerVannak = await prisma.user.create({
+    data: {
+      name: 'Vannak Chea',
+      email: 'vannak.chea@test.com',
+      phone: '+85577445566',
+      password: hashed,
+      role: 'CUSTOMER',
+      vehicles: {
+        create: [
+          { make: 'Ford', model: 'Ranger Wildtrak 4x4', year: 2023, plateNumber: '2B-4455', color: 'Cyber Orange' },
+        ],
+      },
+    },
+  });
+
+  const customerSreymom = await prisma.user.create({
+    data: {
+      name: 'Sreymom Ly',
+      email: 'sreymom.customer@test.com',
+      phone: '+85510334455',
+      password: hashed,
+      role: 'CUSTOMER',
+      vehicles: {
+        create: [
+          { make: 'Mazda', model: 'CX-5 SkyActiv', year: 2022, plateNumber: '2Z-7788', color: 'Soul Red Crystal' },
+        ],
+      },
+    },
+  });
+
+  const customerSophea = await prisma.user.create({
+    data: {
+      name: 'Sophea Pich',
+      email: 'sophea.pich@test.com',
+      phone: '+85598223344',
+      password: hashed,
+      role: 'CUSTOMER',
+      vehicles: {
+        create: [
+          { make: 'Toyota', model: 'Land Cruiser 300', year: 2024, plateNumber: '2C-9999', color: 'Pearl White' },
+        ],
+      },
+    },
+  });
+
+  const customerMichael = await prisma.user.create({
+    data: {
+      name: 'Michael Seng',
+      email: 'michael.seng@test.com',
+      phone: '+85577554433',
+      password: hashed,
+      role: 'CUSTOMER',
+      vehicles: {
+        create: [
+          { make: 'Tesla', model: 'Model Y Dual Motor', year: 2024, plateNumber: '2E-7777', color: 'Deep Blue Metallic' },
+        ],
+      },
+    },
+  });
+  console.log(`✅ Seeded 6 realistic motorist customers with vehicles`);
 
   // ── 2. PROVIDERS (6 mechanics) ────────────────────────────────────────────────
   const mechanicData = [
@@ -114,11 +189,13 @@ async function main() {
     },
   ];
 
+  let speedyProviderId = '';
+  const providerMap: Record<string, string> = {};
   for (const m of mechanicData) {
     const user = await prisma.user.create({
       data: { name: m.name, email: m.email, phone: m.phone, password: hashed, role: 'PROVIDER' },
     });
-    await prisma.serviceProvider.create({
+    const sp = await prisma.serviceProvider.create({
       data: {
         userId: user.id,
         businessName: m.business,
@@ -131,6 +208,10 @@ async function main() {
         services: { create: m.services },
       },
     });
+    providerMap[m.email] = sp.id;
+    if (m.email === 'sokha@test.com') {
+      speedyProviderId = sp.id;
+    }
     console.log(`✅ Mechanic: ${m.business}`);
   }
 
@@ -254,23 +335,318 @@ async function main() {
   }
   console.log(`✅ Seeded ${products.length} products`);
 
-  // ── 4. SAMPLE BOOKING ─────────────────────────────────────────────────────────
-  const vehicle = await prisma.vehicle.findFirst({ where: { userId: customer.id } });
-  const provider = await prisma.serviceProvider.findFirst();
-  if (vehicle && provider) {
+  // ── 4. LIVE INCOMING & SCHEDULED BOOKINGS FOR SPEEDY AUTO FIX ────────────────
+  const vehCamry = await prisma.vehicle.findFirst({ where: { userId: customer.id, make: 'Toyota' } });
+  const vehLexus = await prisma.vehicle.findFirst({ where: { userId: customerDara.id } });
+  const vehRanger = await prisma.vehicle.findFirst({ where: { userId: customerVannak.id } });
+  const vehMazda = await prisma.vehicle.findFirst({ where: { userId: customerSreymom.id } });
+  const vehLandCruiser = await prisma.vehicle.findFirst({ where: { userId: customerSophea.id } });
+  const vehTesla = await prisma.vehicle.findFirst({ where: { userId: customerMichael.id } });
+
+  const today = new Date();
+
+  if (speedyProviderId) {
+    // 1. SOS Emergency Flat Tire - PENDING (Tuol Kork)
+    await prisma.booking.create({
+      data: {
+        customerId: customerDara.id,
+        providerId: speedyProviderId,
+        vehicleId: vehLexus?.id,
+        serviceType: '🚨 24/7 Roadside Emergency Rescue',
+        scheduledDate: today,
+        scheduledTime: '10:30 AM',
+        status: 'PENDING',
+        notes: 'Flat tire on front left wheel, vehicle stopped near Tuol Kork antenna tower (St 598). Need urgent mobile tyre change.',
+      },
+    });
+
+    // 2. SOS Dead Battery Jumpstart - PENDING (Aeon Mall Sen Sok)
+    await prisma.booking.create({
+      data: {
+        customerId: customerVannak.id,
+        providerId: speedyProviderId,
+        vehicleId: vehRanger?.id,
+        serviceType: '⚡ Dead Battery Jumpstart & Alternator Scan',
+        scheduledDate: today,
+        scheduledTime: '11:15 AM',
+        status: 'PENDING',
+        notes: 'Engine won\'t turn over at Aeon Mall Sen Sok B2 basement parking (Zone C). Rapid clicking noise from starter motor.',
+      },
+    });
+
+    // 3. Ceramic Brake Pad Replacement - PENDING (BKK1)
+    await prisma.booking.create({
+      data: {
+        customerId: customerSreymom.id,
+        providerId: speedyProviderId,
+        vehicleId: vehMazda?.id,
+        serviceType: 'Ceramic Brake Pad Replacement',
+        scheduledDate: today,
+        scheduledTime: '02:30 PM',
+        status: 'PENDING',
+        notes: 'High-pitched squealing when decelerating from 40km/h. Customer requested premium Akebono ceramic pads at BKK1.',
+      },
+    });
+
+    // 4. Overheating Engine Rescue - IN_PROGRESS (CamTech University, Chroy Changvar)
     await prisma.booking.create({
       data: {
         customerId: customer.id,
-        providerId: provider.id,
-        vehicleId: vehicle.id,
-        serviceType: 'Oil Change',
-        scheduledDate: new Date('2026-06-15T10:00:00Z'),
-        scheduledTime: '10:00 AM',
-        status: 'ACCEPTED',
-        notes: 'Please check tire pressure as well.',
+        providerId: speedyProviderId,
+        vehicleId: vehCamry?.id,
+        serviceType: '🚨 Emergency Engine Overheating Rescue',
+        scheduledDate: today,
+        scheduledTime: '09:45 AM',
+        status: 'IN_PROGRESS',
+        notes: 'Engine temperature gauge maxed out near CamTech University Campus, Chroy Changvar Satellite City. Steam emitting from radiator expansion tank.',
       },
     });
-    console.log('✅ Sample booking created');
+
+    // 5. Radiator Flush & Diagnostic - ACCEPTED (Riverside Sisowath Quay)
+    await prisma.booking.create({
+      data: {
+        customerId: customerSophea.id,
+        providerId: speedyProviderId,
+        vehicleId: vehLandCruiser?.id,
+        serviceType: 'Radiator Coolant Flush & Pressure Test',
+        scheduledDate: today,
+        scheduledTime: '04:00 PM',
+        status: 'ACCEPTED',
+        notes: 'Routine 40,000km cooling system flush and AC condenser inspection near Riverside Sisowath Quay.',
+      },
+    });
+
+    // 6. Tesla High Voltage Diagnostics - COMPLETED (Olympic Stadium)
+    const completedBooking1 = await prisma.booking.create({
+      data: {
+        customerId: customerMichael.id,
+        providerId: speedyProviderId,
+        vehicleId: vehTesla?.id,
+        serviceType: 'Suspension Check & High Voltage Diagnostics',
+        scheduledDate: new Date(Date.now() - 86400000),
+        scheduledTime: '03:00 PM',
+        status: 'COMPLETED',
+        notes: 'Rear multi-link suspension bushings inspected and complete 96-cell high voltage battery health scan passed at 98.4% near Olympic Stadium Area.',
+      },
+    });
+
+    await prisma.review.create({
+      data: {
+        bookingId: completedBooking1.id,
+        customerId: customerMichael.id,
+        providerId: speedyProviderId,
+        rating: 5,
+        comment: 'Outstanding mobile diagnostic service! Sokha arrived with specialized diagnostic tablets and resolved the error code quickly.',
+        reply: 'Thank you Michael! Glad we could verify your Model Y battery health and suspension. Drive safely!',
+        createdAt: new Date(Date.now() - 80000000),
+      },
+    });
+
+    // 7. Emergency Roadside Tire Rescue - COMPLETED (Tuol Kork)
+    const completedBooking2 = await prisma.booking.create({
+      data: {
+        customerId: customerDara.id,
+        providerId: speedyProviderId,
+        vehicleId: vehLexus?.id,
+        serviceType: '🚨 24/7 Roadside Emergency Rescue',
+        scheduledDate: new Date(Date.now() - 2 * 86400000),
+        scheduledTime: '01:15 PM',
+        status: 'COMPLETED',
+        notes: 'Emergency tire replacement on front right wheel after sharp road debris near Tuol Kork roundabout.',
+      },
+    });
+
+    await prisma.review.create({
+      data: {
+        bookingId: completedBooking2.id,
+        customerId: customerDara.id,
+        providerId: speedyProviderId,
+        rating: 5,
+        comment: 'Saved my day near Tuol Kork! Got a sidewall blowout on St 598 and Sokha arrived in 18 minutes with a hydraulic jack. Professional and fast.',
+        reply: 'Always happy to assist Dara! Keep our 24/7 emergency dispatch on speed dial.',
+        createdAt: new Date(Date.now() - 2 * 86400000 + 7200000),
+      },
+    });
+
+    // 8. Dead Battery Jumpstart - COMPLETED (Aeon Sen Sok)
+    const completedBooking3 = await prisma.booking.create({
+      data: {
+        customerId: customerVannak.id,
+        providerId: speedyProviderId,
+        vehicleId: vehRanger?.id,
+        serviceType: '⚡ Dead Battery Jumpstart & Alternator Scan',
+        scheduledDate: new Date(Date.now() - 3 * 86400000),
+        scheduledTime: '11:00 AM',
+        status: 'COMPLETED',
+        notes: 'Basement parking rescue. 1000A booster pack started the 2.0L bi-turbo diesel immediately.',
+      },
+    });
+
+    await prisma.review.create({
+      data: {
+        bookingId: completedBooking3.id,
+        customerId: customerVannak.id,
+        providerId: speedyProviderId,
+        rating: 5,
+        comment: 'Engine died in Aeon Sen Sok basement parking. Sokha brought heavy-duty booster cables and tested the alternator before leaving. Top mechanic in Phnom Penh!',
+        reply: 'Much appreciated Vannak! Make sure to schedule an alternator brush inspection in 6 months.',
+        createdAt: new Date(Date.now() - 3 * 86400000 + 3600000),
+      },
+    });
+
+    // 9. Ceramic Brake Pad Replacement - COMPLETED (BKK1)
+    const completedBooking4 = await prisma.booking.create({
+      data: {
+        customerId: customerSreymom.id,
+        providerId: speedyProviderId,
+        vehicleId: vehMazda?.id,
+        serviceType: 'Ceramic Brake Pad Replacement',
+        scheduledDate: new Date(Date.now() - 5 * 86400000),
+        scheduledTime: '04:30 PM',
+        status: 'COMPLETED',
+        notes: 'Installed premium Akebono front ceramic pads and bled the hydraulic brake lines.',
+      },
+    });
+
+    await prisma.review.create({
+      data: {
+        bookingId: completedBooking4.id,
+        customerId: customerSreymom.id,
+        providerId: speedyProviderId,
+        rating: 4,
+        comment: 'Clean workshop operation. Replaced front brake pads and flushed the brake fluid. Small wait during peak noon rush, but quality is unmistakable.',
+        reply: "Thank you for the detailed feedback Sreymom! We've added an extra bay to reduce peak noon wait times.",
+        createdAt: new Date(Date.now() - 5 * 86400000 + 10000000),
+      },
+    });
+
+    // 10. Radiator Coolant Flush - COMPLETED (Riverside Sisowath Quay)
+    const completedBooking5 = await prisma.booking.create({
+      data: {
+        customerId: customerSophea.id,
+        providerId: speedyProviderId,
+        vehicleId: vehLandCruiser?.id,
+        serviceType: 'Radiator Coolant Flush & Pressure Test',
+        scheduledDate: new Date(Date.now() - 7 * 86400000),
+        scheduledTime: '10:00 AM',
+        status: 'COMPLETED',
+        notes: 'Full cooling system purge and OEM Toyota Super Long Life Coolant fill.',
+      },
+    });
+
+    await prisma.review.create({
+      data: {
+        bookingId: completedBooking5.id,
+        customerId: customerSophea.id,
+        providerId: speedyProviderId,
+        rating: 5,
+        comment: 'Very thorough service for my Land Cruiser. Tested thermostat opening temperature and purged air bubbles completely. Highly recommended!',
+        reply: 'Pleasure working on your LC300 Sophea. Enjoy your long drive to Siem Reap!',
+        createdAt: new Date(Date.now() - 7 * 86400000 + 14000000),
+      },
+    });
+
+    // 11. Synthetic Oil Change - COMPLETED (CamTech Campus Area)
+    const completedBooking6 = await prisma.booking.create({
+      data: {
+        customerId: customer.id,
+        providerId: speedyProviderId,
+        vehicleId: vehCamry?.id,
+        serviceType: 'Oil Change & Comprehensive Inspection',
+        scheduledDate: new Date(Date.now() - 10 * 86400000),
+        scheduledTime: '02:00 PM',
+        status: 'COMPLETED',
+        notes: 'Mobil 1 Full Synthetic 5W-30 fill with OEM filter change and 25-point visual check.',
+      },
+    });
+
+    await prisma.review.create({
+      data: {
+        bookingId: completedBooking6.id,
+        customerId: customer.id,
+        providerId: speedyProviderId,
+        rating: 5,
+        comment: 'Affordable genuine Mobil 1 synthetic oil change. He even topped off the washer fluid and checked tire pressures without charging extra.',
+        reply: 'You are welcome! Regular maintenance is the key to engine longevity.',
+        createdAt: new Date(Date.now() - 10 * 86400000 + 8000000),
+      },
+    });
+
+    // Recalculate rating and total reviews for Speedy Auto Fix
+    const allSpeedyReviews = await prisma.review.findMany({ where: { providerId: speedyProviderId } });
+    const speedyAvg = allSpeedyReviews.reduce((sum, r) => sum + r.rating, 0) / allSpeedyReviews.length;
+    await prisma.serviceProvider.update({
+      where: { id: speedyProviderId },
+      data: {
+        rating: Math.round(speedyAvg * 10) / 10,
+        totalReviews: allSpeedyReviews.length,
+      },
+    });
+
+    // Seed reviews for other providers as well
+    if (providerMap['dara@test.com']) {
+      const daraProvId = providerMap['dara@test.com'];
+      const daraB1 = await prisma.booking.create({
+        data: {
+          customerId: customerDara.id,
+          providerId: daraProvId,
+          vehicleId: vehLexus?.id,
+          serviceType: 'Exhaust Repair & Tuning',
+          scheduledDate: new Date(Date.now() - 3 * 86400000),
+          scheduledTime: '01:00 PM',
+          status: 'COMPLETED',
+          notes: 'Custom stainless steel exhaust installation.',
+        },
+      });
+      await prisma.review.create({
+        data: {
+          bookingId: daraB1.id,
+          customerId: customerDara.id,
+          providerId: daraProvId,
+          rating: 5,
+          comment: 'Best performance exhaust tuning shop in Tuol Kork. Deep exhaust tone without any highway drone.',
+          reply: 'Thanks Dara! Custom tig welds are guaranteed for 2 years.',
+          createdAt: new Date(Date.now() - 3 * 86400000 + 5000000),
+        },
+      });
+      await prisma.serviceProvider.update({
+        where: { id: daraProvId },
+        data: { rating: 4.8, totalReviews: 1 },
+      });
+    }
+
+    if (providerMap['sreymom@test.com']) {
+      const sreyProvId = providerMap['sreymom@test.com'];
+      const sreyB1 = await prisma.booking.create({
+        data: {
+          customerId: customerVannak.id,
+          providerId: sreyProvId,
+          vehicleId: vehRanger?.id,
+          serviceType: 'AC Recharge & Compressor Fix',
+          scheduledDate: new Date(Date.now() - 4 * 86400000),
+          scheduledTime: '10:30 AM',
+          status: 'COMPLETED',
+          notes: 'Compressor clutch rebuild and R134a refrigerant charge.',
+        },
+      });
+      await prisma.review.create({
+        data: {
+          bookingId: sreyB1.id,
+          customerId: customerVannak.id,
+          providerId: sreyProvId,
+          rating: 5,
+          comment: 'AC was blowing warm air in Cambodia 38°C heat. Sreymom replaced the compressor O-rings and recharged R134a refrigerant. Freezing cold now!',
+          reply: 'Stay cool Vannak! Our AC pressure warranty covers you for 6 months.',
+          createdAt: new Date(Date.now() - 4 * 86400000 + 6000000),
+        },
+      });
+      await prisma.serviceProvider.update({
+        where: { id: sreyProvId },
+        data: { rating: 5.0, totalReviews: 1 },
+      });
+    }
+
+    console.log('✅ Seeded fresh realistic live incoming, today, and completed bookings + reviews for all providers');
   }
 
   // ── 5. NOTIFICATIONS ──────────────────────────────────────────────────────────
@@ -283,15 +659,30 @@ async function main() {
     },
   });
 
+  // ── ADMIN USER ────────────────────────────────────────────────────────────────
+  await prisma.user.upsert({
+    where: { email: 'admin@techtune.com' },
+    update: {},
+    create: {
+      name: 'TechTune Admin',
+      email: 'admin@techtune.com',
+      phone: '+85500000000',
+      password: await bcrypt.hash('admin123', 10),
+      role: 'ADMIN',
+    },
+  });
+
   console.log('\n🎉 Seed complete!');
   console.log('─────────────────────────────────────────────────');
   console.log('  CUSTOMER  → customer@test.com   / password123');
   console.log('  PROVIDER  → sokha@test.com      / password123');
   console.log('  (+ 5 more mechanic providers seeded)');
   console.log(`  PRODUCTS  → ${products.length} products in ${categories.length} categories`);
+  console.log('  ADMIN     → admin@techtune.com  / admin123');
   console.log('─────────────────────────────────────────────────');
 }
 
 main()
   .catch((e) => { console.error(e); process.exit(1); })
   .finally(async () => { await prisma.$disconnect(); });
+
