@@ -269,8 +269,8 @@ export default function EditorialLandingPage() {
             className="flex items-center gap-3 cursor-pointer select-none group"
             onClick={() => window.scrollTo({ top: 0, behavior: "smooth" })}
           >
-            <div className="w-8 h-8 bg-slate-950 text-white flex items-center justify-center font-bold text-xs tracking-widest uppercase transition-transform duration-300 group-hover:scale-105">
-              TT
+            <div className="w-9 h-9 rounded-lg bg-slate-950 p-1.5 flex items-center justify-center transition-transform duration-300 group-hover:scale-105 shadow-xs">
+              <img src="/logo-white.png" alt="TechTune Healer" className="w-full h-auto object-contain" />
             </div>
             <div>
               <span className="text-slate-950 text-sm font-black tracking-wider uppercase block leading-none transition-colors group-hover:text-slate-700">
@@ -1027,8 +1027,8 @@ export default function EditorialLandingPage() {
         <Reveal delay={50} direction="up">
           <div className="max-w-7xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-6">
             <div className="flex items-center gap-3">
-              <div className="w-6 h-6 bg-slate-950 text-white flex items-center justify-center font-bold text-[10px]">
-                TT
+              <div className="w-7 h-7 rounded-md bg-slate-950 p-1 flex items-center justify-center">
+                <img src="/logo-white.png" alt="TechTune Healer" className="w-full h-auto object-contain" />
               </div>
               <span className="font-bold text-slate-950">TechTune Healer</span>
               <span>&bull; Automotive Roadside Infrastructure &bull; Phnom Penh</span>

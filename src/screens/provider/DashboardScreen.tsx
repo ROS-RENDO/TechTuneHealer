@@ -43,6 +43,7 @@ import { useBookingStore, useAuthStore, useLocationStore, useTranslation } from 
 import { Booking } from "../../types";
 import { AnimatedEntrance } from "../../components/AnimatedEntrance";
 import { LanguageToggle } from "../../components/LanguageToggle";
+import { AppLogo } from "../../components/AppLogo";
 import {
   getProviderAvatarUrl,
   getCustomerAvatarUrl,
@@ -599,6 +600,9 @@ export default function DashboardScreen() {
               </View>
             </View>
             <View>
+              <View style={{ marginBottom: 2 }}>
+                <AppLogo variant="dark" width={68} />
+              </View>
               <View style={styles.greetingRow}>
                 <Text style={styles.greeting}>{t("welcomeBack")}</Text>
                 <View style={styles.masterBadge}>

@@ -125,8 +125,8 @@ export default function Sidebar({ currentPath }: { currentPath: string }) {
               <line x1="3" y1="18" x2="21" y2="18" />
             </svg>
           </button>
-          <div className="w-8 h-8 rounded-full bg-slate-950 text-white flex items-center justify-center font-black text-xs tracking-tight shadow-xs">
-            TT
+          <div className="w-9 h-9 rounded-lg bg-slate-950 p-1.5 flex items-center justify-center shadow-xs">
+            <img src="/logo-white.png" alt="TechTune Healer" className="w-full h-auto object-contain" />
           </div>
           <div>
             <p className="text-slate-950 font-bold text-sm leading-tight tracking-tight">TechTune</p>

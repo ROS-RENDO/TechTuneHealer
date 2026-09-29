@@ -55,8 +55,9 @@ export default function AdminLoginPage() {
     <div className="min-h-screen bg-[#F8FAFC] flex flex-col justify-between p-6 sm:p-10 antialiased selection:bg-slate-200">
       {/* Top Navbar */}
       <div className="max-w-md w-full mx-auto flex items-center justify-between">
-        <Link href="/" className="text-base font-bold tracking-tight text-slate-900 hover:text-slate-700">
-          TechTune <span className="text-slate-400 font-normal">/ Admin</span>
+        <Link href="/" className="flex items-center gap-2.5 text-base font-bold tracking-tight text-slate-900 hover:text-slate-700">
+          <img src="/logo.png" alt="TechTune Healer" className="h-6 w-auto object-contain" />
+          <span>TechTune <span className="text-slate-400 font-normal">/ Admin</span></span>
         </Link>
         <Link href="/" className="text-xs font-medium text-slate-500 hover:text-slate-900">
           ← Back

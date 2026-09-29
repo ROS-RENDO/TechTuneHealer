@@ -4,7 +4,7 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { useRouter } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
 import Button from "../../src/components/Button";
-import { AnimatedEntrance } from "../../src/components";
+import { AnimatedEntrance, AppLogo } from "../../src/components";
 import {
   colors,
   spacing,
@@ -42,9 +42,7 @@ export default function WelcomeScreen() {
         <AnimatedEntrance delay={0} direction="down">
           <View style={styles.heroSection}>
             <View style={styles.logoContainer}>
-              <View style={styles.logoIcon}>
-                <Ionicons name="shield-checkmark" size={38} color={colors.white} />
-              </View>
+              <AppLogo variant="dark" width={220} />
             </View>
             <Text style={styles.title}>TechTune Healer</Text>
             <Text style={styles.subtitle}>

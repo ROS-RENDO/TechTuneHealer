@@ -38,6 +38,7 @@ import type { ServiceProvider, Vehicle, Booking } from "../../types";
 import { getFormattedDistance, getProviderAvatarUrl } from "../../utils/helpers";
 import api from "../../services/api";
 import { AnimatedEntrance } from "../../components/AnimatedEntrance";
+import { AppLogo } from "../../components/AppLogo";
 
 const { width } = Dimensions.get("window");
 
@@ -303,6 +304,9 @@ export function HomeScreen() {
           <View style={styles.topAppBar}>
             <View style={styles.appBarHeader}>
               <View style={styles.userSection}>
+                <View style={{ flexDirection: "row", alignItems: "center", marginBottom: 3 }}>
+                  <AppLogo variant="dark" width={78} />
+                </View>
                 <Text style={styles.greetingText}>
                   {t("greeting")}, {user?.name ? user.name.split(" ")[0] : t("driver")}
                 </Text>

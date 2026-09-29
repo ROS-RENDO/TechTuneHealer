@@ -4,7 +4,7 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { useRouter } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
 import Button from "../../src/components/Button";
-import { AnimatedEntrance } from "../../src/components";
+import { AnimatedEntrance, AppLogo } from "../../src/components";
 import {
   colors,
   spacing,
@@ -88,6 +88,9 @@ export default function RoleSelectionScreen() {
           </View>
 
           <View style={styles.titleSection}>
+            <View style={{ alignItems: "center", marginBottom: spacing.md }}>
+              <AppLogo variant="dark" width={160} />
+            </View>
             <Text style={styles.title}>How will you use TechTune?</Text>
             <Text style={styles.subtitle}>
               Select your account type to get started

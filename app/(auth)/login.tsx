@@ -15,7 +15,7 @@ import { Ionicons } from "@expo/vector-icons";
 import Svg, { Path } from "react-native-svg";
 import Input from "../../src/components/Input";
 import Button from "../../src/components/Button";
-import { AnimatedEntrance } from "../../src/components";
+import { AnimatedEntrance, AppLogo } from "../../src/components";
 import { useAuthStore } from "../../src/store";
 import {
   colors,
@@ -165,6 +165,9 @@ export default function LoginScreen() {
             </View>
 
             <View style={styles.titleSection}>
+              <View style={{ alignItems: "center", marginBottom: spacing.md }}>
+                <AppLogo variant="dark" width={160} />
+              </View>
               <Text style={styles.title}>Welcome back</Text>
               <Text style={styles.subtitle}>
                 Sign in to continue to TechTune Healer

@@ -6,9 +6,11 @@
     "version": "1.0.0",
     "orientation": "portrait",
     "userInterfaceStyle": "light",
+    "icon": "./assets/icon.png",
     "splash": {
+      "image": "./assets/splash.png",
       "resizeMode": "contain",
-      "backgroundColor": "#1E40AF"
+      "backgroundColor": "#0F172A"
     },
     "assetBundlePatterns": [
       "**/*"
@@ -23,7 +25,8 @@
     },
     "android": {
       "adaptiveIcon": {
-        "backgroundColor": "#1E40AF"
+        "foregroundImage": "./assets/adaptive-icon.png",
+        "backgroundColor": "#0F172A"
       },
       "package": "com.techtune.healer",
       "permissions": [
@@ -32,7 +35,7 @@
       ]
     },
     "web": {
-      "favicon": ""
+      "favicon": "./assets/favicon.png"
     },
     "plugins": [
       [
