@@ -773,16 +773,16 @@ export default function DashboardScreen() {
                   </TouchableOpacity>
 
                   <TouchableOpacity
-                    style={[styles.toggleBtn, viewMode === "map" && styles.toggleBtnActive]}
+                    style={[styles.toggleBtn, (viewMode as string) === "map" && styles.toggleBtnActive]}
                     onPress={() => setViewMode("map")}
                     activeOpacity={0.7}
                   >
                     <Ionicons
                       name="map"
                       size={14}
-                      color={viewMode === "map" ? colors.white : colors.neutral[600]}
+                      color={(viewMode as string) === "map" ? colors.white : colors.neutral[600]}
                     />
-                    <Text style={[styles.toggleBtnText, viewMode === "map" && styles.toggleBtnTextActive]}>
+                    <Text style={[styles.toggleBtnText, (viewMode as string) === "map" && styles.toggleBtnTextActive]}>
                       Radar
                     </Text>
                   </TouchableOpacity>
