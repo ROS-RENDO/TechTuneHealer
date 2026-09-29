@@ -185,6 +185,11 @@ export function CustomerNavigator() {
         options={{ title: t("myVehicles") }}
       />
       <Stack.Screen
+        name="Vehicles"
+        component={VehiclesScreen}
+        options={{ title: "My Vehicles" }}
+      />
+      <Stack.Screen
         name="EditProfile"
         component={EditProfileScreen}
         options={{ headerShown: false }}

@@ -1,0 +1,149 @@
+name: TechTune Healer CI Pipeline
+
+on:
+  push:
+    branches: [main, master, dev]
+  pull_request:
+    branches: [main, master, dev]
+  workflow_dispatch:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  # =========================================================================
+  # 1. MOBILE APPLICATION CI (React Native / Expo SDK 57 / TypeScript 6)
+  # =========================================================================
+  mobile-ci:
+    name: Mobile Client (Expo & TypeScript)
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Source Code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js 22 LTS
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: 'npm'
+          cache-dependency-path: package-lock.json
+
+      - name: Install Mobile Dependencies
+        run: npm ci --legacy-peer-deps
+
+      - name: Verify Strict TypeScript Compilation
+        run: npx tsc --noEmit
+
+      - name: Run Expo Linter
+        run: npm run lint || true
+
+  # =========================================================================
+  # 2. BACKEND API GATEWAY CI (Express 5 / Prisma 7 / Node.js 22 LTS)
+  # =========================================================================
+  backend-ci:
+    name: Backend API & Prisma ORM
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: backend
+    services:
+      mariadb:
+        image: mariadb:11.4
+        env:
+          MYSQL_ROOT_PASSWORD: rootpassword
+          MYSQL_DATABASE: techtune_test_db
+        ports:
+          - 3306:3306
+        options: --health-cmd="healthcheck.sh --connect --innodb_initialized" --health-interval=10s --health-timeout=5s --health-retries=10
+    steps:
+      - name: Checkout Source Code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js 22 LTS
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: 'npm'
+          cache-dependency-path: backend/package-lock.json
+
+      - name: Install Backend Dependencies
+        run: npm ci
+
+      - name: Validate Prisma Schema
+        run: npx prisma validate
+        env:
+          DATABASE_URL: "mysql://root:rootpassword@localhost:3306/techtune_test_db"
+
+      - name: Generate Prisma Client
+        run: npx prisma generate
+        env:
+          DATABASE_URL: "mysql://root:rootpassword@localhost:3306/techtune_test_db"
+
+      - name: Compile Backend TypeScript
+        run: npx tsc --noEmit
+
+      - name: Verify Environment Template
+        run: test -f .env.example
+
+  # =========================================================================
+  # 3. ADMIN OPERATIONS WEB PORTAL CI (Next.js 16 / React 19 / Tailwind v4)
+  # =========================================================================
+  admin-web-ci:
+    name: Admin Operations Web (Next.js 16)
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: admin-web
+    steps:
+      - name: Checkout Source Code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js 22 LTS
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: 'npm'
+          cache-dependency-path: admin-web/package-lock.json
+
+      - name: Install Admin Web Dependencies
+        run: npm ci
+
+      - name: Build Next.js Production Bundle
+        run: npm run build
+        env:
+          NEXT_TELEMETRY_DISABLED: 1
+          NODE_ENV: production
+
+  # =========================================================================
+  # 4. CODE QUALITY, SECURITY AUDIT & SONARQUBE
+  # =========================================================================
+  code-quality:
+    name: Code Quality & Security Audit
+    runs-on: ubuntu-latest
+    env:
+      SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+    steps:
+      - name: Checkout Source Code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup Node.js 22 LTS
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Security Vulnerability Audit
+        run: npm audit --audit-level=high || true
+
+      - name: SonarQube Quality Gate Scan
+        if: env.SONAR_TOKEN != ''
+        uses: SonarSource/sonarqube-scan-action@v3
+        env:
+          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+          SONAR_HOST_URL: ${{ secrets.SONAR_HOST_URL }}
+
+      - name: SonarQube Notice
+        if: env.SONAR_TOKEN == ''
+        run: echo "SONAR_TOKEN secret not configured. Skipping SonarQube quality gate scan."

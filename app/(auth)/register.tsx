@@ -451,6 +451,11 @@ const styles = StyleSheet.create({
     color: colors.error[600],
     marginTop: -spacing.md,
   },
+  errorText: {
+    fontSize: fontSize.xs,
+    color: colors.error[500],
+    marginTop: 4,
+  },
   signInSection: {
     flexDirection: "row",
     justifyContent: "center",
