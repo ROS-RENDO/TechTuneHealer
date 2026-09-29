@@ -121,6 +121,8 @@ jobs:
   code-quality:
     name: Code Quality & Security Audit
     runs-on: ubuntu-latest
+    env:
+      SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
     steps:
       - name: Checkout Source Code
         uses: actions/checkout@v4
@@ -141,3 +143,7 @@ jobs:
         env:
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
           SONAR_HOST_URL: ${{ secrets.SONAR_HOST_URL }}
+
+      - name: SonarQube Notice
+        if: env.SONAR_TOKEN == ''
+        run: echo "SONAR_TOKEN secret not configured. Skipping SonarQube quality gate scan."
