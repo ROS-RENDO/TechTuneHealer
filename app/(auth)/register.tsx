@@ -508,10 +508,4 @@ const styles = StyleSheet.create({
     fontWeight: "600",
     color: "#1E293B",
   },
-  errorText: {
-    fontSize: fontSize.sm,
-    color: colors.error[500],
-    marginTop: -spacing.xs,
-    marginBottom: spacing.xs,
-  },
 });
