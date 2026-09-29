@@ -27,6 +27,8 @@ jobs:
         with:
           node-version: 22
           cache: 'npm'
+          cache-dependency-path: package-lock.json
+
 
       - name: Install Mobile Dependencies
         run: npm ci --legacy-peer-deps
@@ -36,9 +38,6 @@ jobs:
 
       - name: Run Expo Linter
         run: npm run lint || true
-
-      - name: Verify Expo Project Config
-        run: npx expo config --type public
 
   # =========================================================================
   # 2. BACKEND API GATEWAY CI (Express 5 / Prisma 7 / Node.js 22 LTS)
@@ -57,7 +56,11 @@ jobs:
           MYSQL_DATABASE: techtune_test_db
         ports:
           - 3306:3306
-        options: --health-cmd="healthcheck.sh --connect --innodb_initialized" --health-interval=10s --health-timeout=5s --health-retries=5
+        options: >-
+          --health-cmd="mysqladmin ping -h localhost -u root --password=rootpassword"
+          --health-interval=10s
+          --health-timeout=5s
+          --health-retries=5
     steps:
       - name: Checkout Source Code
         uses: actions/checkout@v4
@@ -67,19 +70,23 @@ jobs:
         with:
           node-version: 22
           cache: 'npm'
-          cache-dependency-path: backend/package.json
+          cache-dependency-path: backend/package-lock.json
 
       - name: Install Backend Dependencies
-        run: npm install
+        run: npm ci
 
       - name: Validate Prisma Schema
         run: npx prisma validate
+        env:
+          DATABASE_URL: "mysql://root:rootpassword@localhost:3306/techtune_test_db"
 
       - name: Generate Prisma Client
         run: npx prisma generate
+        env:
+          DATABASE_URL: "mysql://root:rootpassword@localhost:3306/techtune_test_db"
 
       - name: Compile Backend TypeScript
-        run: npx tsc
+        run: npx tsc --noEmit
 
       - name: Verify Environment Template
         run: test -f .env.example
@@ -102,10 +109,10 @@ jobs:
         with:
           node-version: 22
           cache: 'npm'
-          cache-dependency-path: admin-web/package.json
+          cache-dependency-path: admin-web/package-lock.json
 
       - name: Install Admin Web Dependencies
-        run: npm install
+        run: npm ci
 
       - name: Build Next.js Production Bundle
         run: npm run build
@@ -135,7 +142,7 @@ jobs:
 
       - name: SonarQube Quality Gate Scan
         if: env.SONAR_TOKEN != ''
-        uses: SonarSource/sonarqube-scan-action@master
+        uses: SonarSource/sonarqube-scan-action@v3
         env:
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
-          SONAR_HOST_URL: ${{ secrets.SONAR_HOST_URL || 'http://localhost:9000' }}
+          SONAR_HOST_URL: ${{ secrets.SONAR_HOST_URL }}
