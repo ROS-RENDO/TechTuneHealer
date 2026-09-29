@@ -64,6 +64,7 @@ export default function RegisterScreen() {
     confirmPassword: "",
   });
   const [showPassword, setShowPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [agreeTerms, setAgreeTerms] = useState(false);
 
@@ -446,6 +447,11 @@ const styles = StyleSheet.create({
     fontSize: fontSize.sm,
     color: colors.error[600],
     marginTop: -spacing.md,
+  },
+  errorText: {
+    fontSize: fontSize.xs,
+    color: colors.error[500],
+    marginTop: 4,
   },
   signInSection: {
     flexDirection: "row",

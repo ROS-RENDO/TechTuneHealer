@@ -755,82 +755,43 @@ export default function DashboardScreen() {
               </View>
 
               <View style={styles.headerControlsRow}>
-                {/* Segmented View Mode Toggle: List vs Map Radar */}
-                <View style={styles.segmentedToggle}>
+                {/* View Mode Toggle: List vs Radar Map */}
+                <View style={styles.viewToggle}>
                   <TouchableOpacity
-                    style={[styles.segmentBtn, viewMode === "list" && styles.segmentBtnActive]}
+                    style={[styles.toggleBtn, viewMode === "list" && styles.toggleBtnActive]}
                     onPress={() => setViewMode("list")}
                     activeOpacity={0.7}
                   >
                     <Ionicons
                       name="list"
                       size={14}
-                      color={viewMode === "list" ? colors.primary[700] : colors.neutral[400]}
+                      color={viewMode === "list" ? colors.white : colors.neutral[600]}
                     />
-                    <Text style={[styles.segmentBtnText, viewMode === "list" && styles.segmentBtnTextActive]}>
+                    <Text style={[styles.toggleBtnText, viewMode === "list" && styles.toggleBtnTextActive]}>
                       List
                     </Text>
                   </TouchableOpacity>
 
                   <TouchableOpacity
-                    style={[styles.segmentBtn, viewMode === "map" && styles.segmentBtnActive]}
+                    style={[styles.toggleBtn, viewMode === "map" && styles.toggleBtnActive]}
                     onPress={() => setViewMode("map")}
                     activeOpacity={0.7}
                   >
                     <Ionicons
-                      name="radar"
+                      name="map"
                       size={14}
-                      color={viewMode === "map" ? colors.primary[700] : colors.neutral[400]}
+                      color={viewMode === "map" ? colors.white : colors.neutral[600]}
                     />
-                    <Text style={[styles.segmentBtnText, viewMode === "map" && styles.segmentBtnTextActive]}>
-                      Radar Map
+                    <Text style={[styles.toggleBtnText, viewMode === "map" && styles.toggleBtnTextActive]}>
+                      Radar
                     </Text>
                   </TouchableOpacity>
                 </View>
-
-                {/* Filter Modal Trigger */}
-                <TouchableOpacity
-                  style={styles.filterIconButton}
-                  onPress={() => setShowFilterModal(true)}
-                  activeOpacity={0.7}
-                >
-                  <Ionicons name="options-outline" size={17} color={colors.neutral[700]} />
-                </TouchableOpacity>
               </View>
             </View>
 
-            {/* Map Mode: Real Live Radar Map */}
-            {viewMode === "map" && (
-              <View style={styles.mapCard}>
-                <View style={styles.radarLegendRow}>
-                  <View style={styles.radarLegendItem}>
-                    <View style={styles.radarLegendWorkshopDot} />
-                    <Text style={styles.radarLegendText}>Your Workshop</Text>
-                  </View>
-                  <View style={styles.radarLegendItem}>
-                    <View style={styles.radarLegendUrgentDot} />
-                    <Text style={styles.radarLegendText}>Emergency SOS</Text>
-                  </View>
-                  <View style={styles.radarLegendItem}>
-                    <View style={styles.radarLegendNormalDot} />
-                    <Text style={styles.radarLegendText}>Standard Job</Text>
-                  </View>
-                </View>
-
-                {renderMapView()}
-
-                {/* Map Floating Summary Bar */}
-                <View style={styles.mapSummaryBar}>
-                  <Ionicons name="navigate-circle" size={18} color={colors.primary[600]} />
-                  <Text style={styles.mapSummaryText}>
-                    {pendingBookings.length} pending · {todayBookings.length} scheduled within dispatch zone
-                  </Text>
-                </View>
-              </View>
-            )}
-
             {/* Tab Filter: Pending Requests vs Today's Schedule */}
-            <View style={styles.filterTabsRow}>
+            <View style={styles.filterTabs}>
               {(["pending", "today"] as const).map((filter) => (
                 <TouchableOpacity
                   key={filter}

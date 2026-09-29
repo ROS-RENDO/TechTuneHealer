@@ -364,7 +364,7 @@ export function BookingsScreen() {
 
                   <View style={styles.heroActionsRow}>
                     <TouchableOpacity
-                      style={styles.heroTrackBtn}
+                      style={styles.heroPrimaryBtn}
                       activeOpacity={0.85}
                       onPress={() =>
                         navigation.navigate('CustomerTracking', {
@@ -374,11 +374,11 @@ export function BookingsScreen() {
                       }
                     >
                       <Ionicons name="navigate-outline" size={16} color="#FFFFFF" />
-                      <Text style={styles.heroTrackText}>Track Live Status</Text>
+                      <Text style={styles.heroPrimaryBtnText}>Track Live Status</Text>
                     </TouchableOpacity>
 
                     <TouchableOpacity
-                      style={styles.heroChatBtn}
+                      style={styles.heroSecondaryBtn}
                       activeOpacity={0.85}
                       onPress={() => navigation.navigate('Chat', { bookingId: activeBooking.id })}
                     >
@@ -391,8 +391,8 @@ export function BookingsScreen() {
           }
           renderItem={renderBookingCard}
           ListEmptyComponent={
-            <View style={styles.emptyContainer}>
-              <View style={styles.emptyIconCircle}>
+            <View style={styles.emptyState}>
+              <View style={styles.emptyIconContainer}>
                 <Ionicons name="calendar-clear-outline" size={36} color={colors.neutral[400]} />
               </View>
               <Text style={styles.emptyTitle}>No Bookings Found</Text>
