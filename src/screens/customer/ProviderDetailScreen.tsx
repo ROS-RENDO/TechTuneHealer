@@ -1,4 +1,4 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import {
   View,
   Text,
@@ -7,26 +7,32 @@ import {
   TouchableOpacity,
   Linking,
   Platform,
+  Image,
+  ActivityIndicator,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useNavigation, useRoute } from "@react-navigation/native";
 import { Ionicons } from "@expo/vector-icons";
 
-import {} from "../../components/";
+import { AnimatedEntrance } from "../../components/AnimatedEntrance";
 import { colors, spacing, shadows } from "../../constants/theme";
-import { useProviderSearchStore } from "../../store";
+import { useLocationStore, useProviderSearchStore } from "../../store";
 import type { CustomerStackScreenProps } from "../../navigation/types";
-import type { ServiceProvider } from "../../types";
+import type { ServiceProvider, Review } from "../../types";
+import { getFormattedDistance, getProviderAvatarUrl } from "../../utils/helpers";
+import api from "../../services/api";
 
 // Conditionally import react-native-maps only on native platforms
 let MapView: any = null;
 let Marker: any = null;
-let PROVIDER_GOOGLE: any = null;
+let PROVIDER_DEFAULT: any = undefined;
+let PROVIDER_GOOGLE: any = undefined;
 
 if (Platform.OS !== "web") {
   const mapsModule = require("react-native-maps");
-  MapView = mapsModule.default;
+  MapView = mapsModule.default || mapsModule;
   Marker = mapsModule.Marker;
+  PROVIDER_DEFAULT = mapsModule.PROVIDER_DEFAULT;
   PROVIDER_GOOGLE = mapsModule.PROVIDER_GOOGLE;
 }
 
@@ -36,10 +42,17 @@ export function ProviderDetailScreen() {
   const route = useRoute<CustomerStackScreenProps<"ProviderDetail">["route"]>();
   const { providerId } = route.params;
   const { providers } = useProviderSearchStore();
+  const { currentLocation } = useLocationStore();
 
   const provider = useMemo(
     () => providers.find((p) => p.id === providerId),
     [providerId, providers],
+  );
+
+  const distance = useMemo(
+    () =>
+      provider ? getFormattedDistance(currentLocation, provider.location) : null,
+    [currentLocation, provider],
   );
 
   const [activeTab, setActiveTab] = useState<"about" | "services" | "reviews">(
@@ -95,7 +108,7 @@ export function ProviderDetailScreen() {
             <>
               <MapView
                 style={styles.map}
-                provider={PROVIDER_GOOGLE}
+                provider={Platform.OS === "android" ? PROVIDER_GOOGLE : PROVIDER_DEFAULT}
                 initialRegion={{
                   latitude: provider.location.latitude - 0.002,
                   longitude: provider.location.longitude,
@@ -134,175 +147,192 @@ export function ProviderDetailScreen() {
         {/* Content Wrapper */}
         <View style={styles.contentWrapper}>
           {/* Floating Info Card */}
-          <View style={styles.infoCard}>
-            <View style={styles.infoHeaderRow}>
-              <View style={styles.providerAvatar}>
-                <Text style={styles.providerAvatarText}>
-                  {provider.businessName.charAt(0).toUpperCase()}
-                </Text>
-              </View>
-              <View style={styles.infoTextContainer}>
-                <View style={styles.nameRow}>
-                  <Text style={styles.providerName} numberOfLines={1}>
-                    {provider.businessName}
-                  </Text>
-                  {provider.isVerified && (
-                    <Ionicons
-                      name="checkmark-circle"
-                      size={18}
-                      color={colors.primary[500]}
-                    />
-                  )}
+          <AnimatedEntrance delay={0} direction="up">
+            <View style={styles.infoCard}>
+              <View style={styles.infoHeaderRow}>
+                <View style={styles.providerAvatar}>
+                  <Image
+                    source={{ uri: getProviderAvatarUrl(provider) }}
+                    style={styles.providerAvatarImg}
+                    resizeMode="cover"
+                  />
+                  {provider.isAvailable && <View style={styles.providerDetailOnlineDot} />}
                 </View>
-                <Text style={styles.providerAddress} numberOfLines={1}>
-                  {provider.address}
-                </Text>
-
-                <View style={styles.ratingRow}>
-                  <View style={styles.ratingInfo}>
-                    <Ionicons
-                      name="star"
-                      size={14}
-                      color={colors.warning[500]}
-                    />
-                    <Text style={styles.ratingText}>
-                      {provider.rating.toFixed(1)}
+                <View style={styles.infoTextContainer}>
+                  <View style={styles.nameRow}>
+                    <Text style={styles.providerName} numberOfLines={1}>
+                      {provider.businessName}
                     </Text>
-                    <Text style={styles.reviewCount}>
-                      ({provider.reviewCount})
-                    </Text>
+                    {provider.isVerified && (
+                      <Ionicons
+                        name="checkmark-circle"
+                        size={18}
+                        color={colors.primary[500]}
+                      />
+                    )}
                   </View>
-                  <View
-                    style={[
-                      styles.statusBadge,
-                      {
-                        backgroundColor: provider.isAvailable
-                          ? colors.success[50]
-                          : colors.neutral[100],
-                      },
-                    ]}
-                  >
+                  <Text style={styles.providerAddress} numberOfLines={1}>
+                    {provider.address}
+                  </Text>
+
+                  <View style={styles.ratingRow}>
+                    <View style={styles.ratingInfo}>
+                      <Ionicons
+                        name="star"
+                        size={14}
+                        color={colors.warning[500]}
+                      />
+                      <Text style={styles.ratingText}>
+                        {provider.rating.toFixed(1)}
+                      </Text>
+                      <Text style={styles.reviewCount}>
+                        ({provider.reviewCount})
+                      </Text>
+                    </View>
+
+                    {distance && (
+                      <View style={styles.distanceBadge}>
+                        <Ionicons name="navigate" size={11} color={colors.primary[600]} />
+                        <Text style={styles.distanceText}>{distance}</Text>
+                      </View>
+                    )}
+
                     <View
                       style={[
-                        styles.statusDot,
+                        styles.statusBadge,
                         {
                           backgroundColor: provider.isAvailable
-                            ? colors.success[500]
-                            : colors.neutral[400],
-                        },
-                      ]}
-                    />
-                    <Text
-                      style={[
-                        styles.statusText,
-                        {
-                          color: provider.isAvailable
-                            ? colors.success[700]
-                            : colors.neutral[600],
+                            ? colors.success[50]
+                            : colors.neutral[100],
                         },
                       ]}
                     >
-                      {provider.isAvailable ? "Open" : "Closed"}
-                    </Text>
+                      <View
+                        style={[
+                          styles.statusDot,
+                          {
+                            backgroundColor: provider.isAvailable
+                              ? colors.success[500]
+                              : colors.neutral[400],
+                          },
+                        ]}
+                      />
+                      <Text
+                        style={[
+                          styles.statusText,
+                          {
+                            color: provider.isAvailable
+                              ? colors.success[700]
+                              : colors.neutral[600],
+                          },
+                        ]}
+                      >
+                        {provider.isAvailable ? "Open" : "Closed"}
+                      </Text>
+                    </View>
                   </View>
                 </View>
               </View>
-            </View>
 
-            {/* Quick Actions */}
-            <View style={styles.quickActions}>
-              <TouchableOpacity style={styles.quickAction} onPress={handleCall}>
-                <View
-                  style={[
-                    styles.quickActionIcon,
-                    { backgroundColor: colors.primary[50] },
-                  ]}
+              {/* Quick Actions */}
+              <View style={styles.quickActions}>
+                <TouchableOpacity style={styles.quickAction} onPress={handleCall}>
+                  <View
+                    style={[
+                      styles.quickActionIcon,
+                      { backgroundColor: colors.primary[50] },
+                    ]}
+                  >
+                    <Ionicons name="call" size={20} color={colors.primary[600]} />
+                  </View>
+                  <Text style={styles.quickActionText}>Call</Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={styles.quickAction}
+                  onPress={handleDirections}
                 >
-                  <Ionicons name="call" size={20} color={colors.primary[600]} />
-                </View>
-                <Text style={styles.quickActionText}>Call</Text>
-              </TouchableOpacity>
-              <TouchableOpacity
-                style={styles.quickAction}
-                onPress={handleDirections}
-              >
-                <View
-                  style={[
-                    styles.quickActionIcon,
-                    { backgroundColor: colors.secondary[50] },
-                  ]}
-                >
-                  <Ionicons
-                    name="navigate"
-                    size={20}
-                    color={colors.secondary[600]}
-                  />
-                </View>
-                <Text style={styles.quickActionText}>Directions</Text>
-              </TouchableOpacity>
-              <TouchableOpacity style={styles.quickAction} onPress={() => {}}>
-                <View
-                  style={[
-                    styles.quickActionIcon,
-                    { backgroundColor: colors.accent + "20" },
-                  ]}
-                >
-                  <Ionicons name="share" size={20} color={colors.accent} />
-                </View>
-                <Text style={styles.quickActionText}>Share</Text>
-              </TouchableOpacity>
+                  <View
+                    style={[
+                      styles.quickActionIcon,
+                      { backgroundColor: colors.secondary[50] },
+                    ]}
+                  >
+                    <Ionicons
+                      name="navigate"
+                      size={20}
+                      color={colors.secondary[600]}
+                    />
+                  </View>
+                  <Text style={styles.quickActionText}>Directions</Text>
+                </TouchableOpacity>
+                <TouchableOpacity style={styles.quickAction} onPress={() => {}}>
+                  <View
+                    style={[
+                      styles.quickActionIcon,
+                      { backgroundColor: colors.accent + "20" },
+                    ]}
+                  >
+                    <Ionicons name="share" size={20} color={colors.accent} />
+                  </View>
+                  <Text style={styles.quickActionText}>Share</Text>
+                </TouchableOpacity>
+              </View>
             </View>
-          </View>
+          </AnimatedEntrance>
 
           {/* Tabs */}
-          <View style={styles.tabsContainer}>
-            <TouchableOpacity
-              style={[styles.tab, activeTab === "about" && styles.tabActive]}
-              onPress={() => setActiveTab("about")}
-            >
-              <Text
-                style={[
-                  styles.tabText,
-                  activeTab === "about" && styles.tabTextActive,
-                ]}
+          <AnimatedEntrance delay={80} direction="up">
+            <View style={styles.tabsContainer}>
+              <TouchableOpacity
+                style={[styles.tab, activeTab === "about" && styles.tabActive]}
+                onPress={() => setActiveTab("about")}
               >
-                About
-              </Text>
-            </TouchableOpacity>
-            <TouchableOpacity
-              style={[styles.tab, activeTab === "services" && styles.tabActive]}
-              onPress={() => setActiveTab("services")}
-            >
-              <Text
-                style={[
-                  styles.tabText,
-                  activeTab === "services" && styles.tabTextActive,
-                ]}
+                <Text
+                  style={[
+                    styles.tabText,
+                    activeTab === "about" && styles.tabTextActive,
+                  ]}
+                >
+                  About
+                </Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[styles.tab, activeTab === "services" && styles.tabActive]}
+                onPress={() => setActiveTab("services")}
               >
-                Services
-              </Text>
-            </TouchableOpacity>
-            <TouchableOpacity
-              style={[styles.tab, activeTab === "reviews" && styles.tabActive]}
-              onPress={() => setActiveTab("reviews")}
-            >
-              <Text
-                style={[
-                  styles.tabText,
-                  activeTab === "reviews" && styles.tabTextActive,
-                ]}
+                <Text
+                  style={[
+                    styles.tabText,
+                    activeTab === "services" && styles.tabTextActive,
+                  ]}
+                >
+                  Services
+                </Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[styles.tab, activeTab === "reviews" && styles.tabActive]}
+                onPress={() => setActiveTab("reviews")}
               >
-                Reviews
-              </Text>
-            </TouchableOpacity>
-          </View>
+                <Text
+                  style={[
+                    styles.tabText,
+                    activeTab === "reviews" && styles.tabTextActive,
+                  ]}
+                >
+                  Reviews
+                </Text>
+              </TouchableOpacity>
+            </View>
+          </AnimatedEntrance>
 
           {/* Tab Content */}
-          <View style={styles.tabContent}>
-            {activeTab === "about" && <AboutTab provider={provider} />}
-            {activeTab === "services" && <ServicesTab provider={provider} />}
-            {activeTab === "reviews" && <ReviewsTab provider={provider} />}
-          </View>
+          <AnimatedEntrance delay={140} direction="up">
+            <View style={styles.tabContent}>
+              {activeTab === "about" && <AboutTab provider={provider} />}
+              {activeTab === "services" && <ServicesTab provider={provider} />}
+              {activeTab === "reviews" && <ReviewsTab provider={provider} />}
+            </View>
+          </AnimatedEntrance>
 
           {/* Bottom spacing for fixed action bar */}
           <View style={{ height: 120 }} />
@@ -310,26 +340,38 @@ export function ProviderDetailScreen() {
       </ScrollView>
 
       {/* Floating Bottom Bar */}
-      <View style={styles.bottomBarWrapper}>
+      <AnimatedEntrance delay={200} direction="up" style={styles.bottomBarWrapper}>
         <SafeAreaView edges={["bottom"]}>
           <View style={styles.bottomActions}>
             <TouchableOpacity
-              style={styles.emergencyButton}
-              onPress={handleEmergencyBook}
+              style={styles.callBottomButton}
+              onPress={handleCall}
+              activeOpacity={0.8}
             >
-              <Ionicons name="warning" size={24} color={colors.error[600]} />
+              <Ionicons name="call" size={20} color={colors.primary[700]} />
             </TouchableOpacity>
+
+            <TouchableOpacity
+              style={styles.emergencyButtonPill}
+              onPress={handleEmergencyBook}
+              activeOpacity={0.8}
+            >
+              <Ionicons name="flash" size={16} color={colors.white} />
+              <Text style={styles.emergencyButtonPillText}>SOS Rescue</Text>
+            </TouchableOpacity>
+
             <View style={styles.bookButtonContainer}>
               <TouchableOpacity
                 style={styles.bookButton}
                 onPress={handleBookNow}
+                activeOpacity={0.8}
               >
-                <Text style={styles.bookButtonText}>Book Now</Text>
+                <Text style={styles.bookButtonText}>Book Service</Text>
               </TouchableOpacity>
             </View>
           </View>
         </SafeAreaView>
-      </View>
+      </AnimatedEntrance>
     </View>
   );
 }
@@ -403,109 +445,196 @@ function AboutTab({ provider }: { provider: ServiceProvider }) {
 }
 
 function ServicesTab({ provider }: { provider: ServiceProvider }) {
-  const mockServices = [
-    { name: "Oil Change", price: "$25 - $50", duration: "30 min" },
-    { name: "Tire Replacement", price: "$50 - $100", duration: "1 hour" },
-    { name: "Battery Check", price: "Free", duration: "15 min" },
-    { name: "Brake Inspection", price: "$30 - $60", duration: "45 min" },
-    { name: "AC Repair", price: "$100 - $300", duration: "2-3 hours" },
-    { name: "Engine Diagnostics", price: "$50 - $100", duration: "1 hour" },
-  ];
+  const services = provider.services || [];
+
+  if (services.length === 0) {
+    return (
+      <View style={styles.emptyTabState}>
+        <Ionicons name="construct-outline" size={48} color={colors.neutral[300]} />
+        <Text style={styles.emptyTabTitle}>No Specific Services Listed</Text>
+        <Text style={styles.emptyTabSubtitle}>
+          Contact {provider.businessName || provider.name} directly for custom quotes and availability.
+        </Text>
+      </View>
+    );
+  }
 
   return (
     <View style={styles.servicesContainer}>
-      {mockServices.map((service, index) => (
-        <View key={index} style={styles.serviceCard}>
-          <View style={styles.serviceInfo}>
-            <Text style={styles.serviceName}>{service.name}</Text>
-            <View style={styles.serviceDetails}>
-              <View style={styles.serviceDetail}>
-                <Ionicons name="time" size={14} color={colors.neutral[500]} />
-                <Text style={styles.serviceDetailText}>{service.duration}</Text>
+      {services.map((service, index) => {
+        const priceDisplay =
+          (service as any).price !== undefined
+            ? `$${(service as any).price}`
+            : service.priceMin && service.priceMax && service.priceMin !== service.priceMax
+            ? `$${service.priceMin} - $${service.priceMax}`
+            : service.priceMin
+            ? `$${service.priceMin}`
+            : "Quote on Request";
+
+        const durationMinutes =
+          (service as any).duration || service.estimatedDuration || 30;
+        const durationDisplay =
+          durationMinutes >= 60
+            ? `${Math.floor(durationMinutes / 60)}h ${
+                durationMinutes % 60 ? `${durationMinutes % 60}m` : ""
+              }`.trim()
+            : `${durationMinutes} min`;
+
+        return (
+          <View key={service.id || index} style={styles.serviceCard}>
+            <View style={styles.serviceInfo}>
+              <Text style={styles.serviceName}>{service.name}</Text>
+              {service.description ? (
+                <Text style={styles.serviceDescText}>{service.description}</Text>
+              ) : null}
+              <View style={styles.serviceDetails}>
+                <View style={styles.serviceDetail}>
+                  <Ionicons name="time-outline" size={14} color={colors.neutral[500]} />
+                  <Text style={styles.serviceDetailText}>{durationDisplay}</Text>
+                </View>
+                {service.category ? (
+                  <View style={[styles.serviceDetail, { marginLeft: spacing.md }]}>
+                    <Ionicons name="pricetag-outline" size={12} color={colors.neutral[500]} />
+                    <Text style={styles.serviceDetailText}>{service.category}</Text>
+                  </View>
+                ) : null}
               </View>
             </View>
+            <Text style={styles.servicePrice}>{priceDisplay}</Text>
           </View>
-          <Text style={styles.servicePrice}>{service.price}</Text>
-        </View>
-      ))}
+        );
+      })}
     </View>
   );
 }
 
 function ReviewsTab({ provider }: { provider: ServiceProvider }) {
-  const mockReviews = [
-    {
-      id: "1",
-      name: "John D.",
-      rating: 5,
-      date: "2 days ago",
-      comment: "Excellent service! Fixed my car quickly and at a fair price.",
-    },
-    {
-      id: "2",
-      name: "Sarah M.",
-      rating: 4,
-      date: "1 week ago",
-      comment: "Good work, but had to wait a bit longer than expected.",
-    },
-    {
-      id: "3",
-      name: "Mike R.",
-      rating: 5,
-      date: "2 weeks ago",
-      comment: "Very professional and knowledgeable. Highly recommend!",
-    },
-  ];
+  const [reviews, setReviews] = useState<Review[]>(provider.reviews || []);
+  const [loading, setLoading] = useState(false);
+
+  useEffect(() => {
+    let isMounted = true;
+    async function fetchReviews() {
+      try {
+        setLoading(true);
+        const data = await api.reviews.getByProvider(provider.id);
+        if (isMounted && data && Array.isArray(data)) {
+          setReviews(data);
+        }
+      } catch {
+        // Keep initial reviews if network is slow
+      } finally {
+        if (isMounted) setLoading(false);
+      }
+    }
+    fetchReviews();
+    return () => {
+      isMounted = false;
+    };
+  }, [provider.id]);
+
+  const ratingAvg =
+    reviews.length > 0
+      ? reviews.reduce((sum, r) => sum + r.rating, 0) / reviews.length
+      : provider.rating || 5.0;
+
+  const totalReviewsCount =
+    reviews.length > 0
+      ? reviews.length
+      : provider.totalReviews ?? provider.reviewCount ?? 0;
 
   return (
     <View style={styles.reviewsContainer}>
       <View style={styles.ratingSummaryCard}>
-        <Text style={styles.ratingBigValue}>{provider.rating.toFixed(1)}</Text>
+        <Text style={styles.ratingBigValue}>{ratingAvg.toFixed(1)}</Text>
         <View style={styles.starsRowCentered}>
           {[1, 2, 3, 4, 5].map((star) => (
             <Ionicons
               key={star}
-              name={
-                star <= Math.round(provider.rating) ? "star" : "star-outline"
-              }
+              name={star <= Math.round(ratingAvg) ? "star" : "star-outline"}
               size={18}
               color={colors.warning[500]}
             />
           ))}
         </View>
         <Text style={styles.totalReviewsText}>
-          Based on {provider.reviewCount} reviews
+          Based on {totalReviewsCount} verified {totalReviewsCount === 1 ? "review" : "reviews"}
         </Text>
       </View>
 
-      {mockReviews.map((review) => (
-        <View key={review.id} style={styles.reviewCard}>
-          <View style={styles.reviewHeader}>
-            <View style={styles.reviewerAvatar}>
-              <Text style={styles.reviewerInitial}>
-                {review.name.charAt(0)}
-              </Text>
-            </View>
-            <View style={styles.reviewerInfo}>
-              <Text style={styles.reviewerName}>{review.name}</Text>
-              <View style={styles.reviewMeta}>
-                <View style={styles.reviewStars}>
-                  {[1, 2, 3, 4, 5].map((star) => (
-                    <Ionicons
-                      key={star}
-                      name={star <= review.rating ? "star" : "star-outline"}
-                      size={12}
-                      color={colors.warning[500]}
-                    />
-                  ))}
-                </View>
-                <Text style={styles.reviewDate}>{review.date}</Text>
-              </View>
-            </View>
-          </View>
-          <Text style={styles.reviewComment}>{review.comment}</Text>
+      {loading && reviews.length === 0 ? (
+        <View style={{ padding: spacing.xl, alignItems: "center" }}>
+          <ActivityIndicator size="small" color={colors.primary[500]} />
+          <Text style={{ marginTop: spacing.sm, color: colors.neutral[500], fontSize: 13 }}>
+            Loading verified reviews...
+          </Text>
         </View>
-      ))}
+      ) : reviews.length === 0 ? (
+        <View style={styles.emptyTabState}>
+          <Ionicons name="chatbox-ellipses-outline" size={44} color={colors.neutral[300]} />
+          <Text style={styles.emptyTabTitle}>No Reviews Yet</Text>
+          <Text style={styles.emptyTabSubtitle}>
+            Be the first motorist to review {provider.businessName || provider.name} after a completed booking!
+          </Text>
+        </View>
+      ) : (
+        reviews.map((review) => {
+          const reviewerName = review.customer?.name || "Verified Motorist";
+          const initial = reviewerName.charAt(0).toUpperCase();
+          const reviewDate = review.createdAt
+            ? new Date(review.createdAt).toLocaleDateString(undefined, {
+                year: "numeric",
+                month: "short",
+                day: "numeric",
+              })
+            : "Recently";
+
+          return (
+            <View key={review.id} style={styles.reviewCard}>
+              <View style={styles.reviewHeader}>
+                <View style={styles.reviewerAvatar}>
+                  <Text style={styles.reviewerInitial}>{initial}</Text>
+                </View>
+                <View style={styles.reviewerInfo}>
+                  <Text style={styles.reviewerName}>{reviewerName}</Text>
+                  <View style={styles.reviewMeta}>
+                    <View style={styles.reviewStars}>
+                      {[1, 2, 3, 4, 5].map((star) => (
+                        <Ionicons
+                          key={star}
+                          name={star <= review.rating ? "star" : "star-outline"}
+                          size={12}
+                          color={colors.warning[500]}
+                        />
+                      ))}
+                    </View>
+                    <Text style={styles.reviewDate}>{reviewDate}</Text>
+                  </View>
+                </View>
+              </View>
+              {review.comment ? (
+                <Text style={styles.reviewComment}>{review.comment}</Text>
+              ) : null}
+
+              {review.reply ? (
+                <View style={styles.providerReplyBox}>
+                  <View style={styles.replyHeaderRow}>
+                    <Ionicons
+                      name="return-down-forward"
+                      size={14}
+                      color={colors.primary[600]}
+                    />
+                    <Text style={styles.replyAuthorText}>
+                      {provider.businessName || "Provider"} Response
+                    </Text>
+                  </View>
+                  <Text style={styles.replyContentText}>{review.reply}</Text>
+                </View>
+              ) : null}
+            </View>
+          );
+        })
+      )}
     </View>
   );
 }
@@ -589,6 +718,23 @@ const styles = StyleSheet.create({
     borderWidth: 2,
     borderColor: colors.white,
     ...shadows.sm,
+    position: "relative",
+  },
+  providerAvatarImg: {
+    width: 68,
+    height: 68,
+    borderRadius: 34,
+  },
+  providerDetailOnlineDot: {
+    position: "absolute",
+    bottom: 2,
+    right: 2,
+    width: 15,
+    height: 15,
+    borderRadius: 7.5,
+    backgroundColor: "#22C55E",
+    borderWidth: 2.5,
+    borderColor: colors.white,
   },
   providerAvatarText: {
     fontSize: 28,
@@ -654,6 +800,20 @@ const styles = StyleSheet.create({
     fontSize: 11,
     fontWeight: "700",
     textTransform: "uppercase",
+  },
+  distanceBadge: {
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: colors.primary[50],
+    paddingHorizontal: 7,
+    paddingVertical: 3,
+    borderRadius: 8,
+    gap: 3,
+  },
+  distanceText: {
+    fontSize: 11,
+    fontWeight: "700",
+    color: colors.primary[700],
   },
   quickActions: {
     flexDirection: "row",
@@ -912,29 +1072,98 @@ const styles = StyleSheet.create({
     paddingVertical: spacing.md,
     gap: spacing.md,
   },
-  emergencyButton: {
-    width: 56,
-    height: 56,
+  callBottomButton: {
+    width: 52,
+    height: 52,
     borderRadius: 16,
-    backgroundColor: colors.error[50],
+    backgroundColor: colors.primary[50],
     alignItems: "center",
     justifyContent: "center",
     borderWidth: 1,
-    borderColor: colors.error[100],
+    borderColor: colors.primary[100],
+  },
+  emergencyButtonPill: {
+    flexDirection: "row",
+    alignItems: "center",
+    paddingHorizontal: 16,
+    height: 52,
+    borderRadius: 16,
+    backgroundColor: colors.error[600],
+    gap: 6,
+    ...shadows.sm,
+  },
+  emergencyButtonPillText: {
+    fontSize: 14,
+    fontWeight: "800",
+    color: colors.white,
   },
   bookButtonContainer: {
     flex: 1,
   },
   bookButton: {
-    height: 56,
+    height: 52,
     borderRadius: 16,
     backgroundColor: colors.neutral[900],
     alignItems: "center",
     justifyContent: "center",
   },
   bookButtonText: {
-    fontSize: 16,
+    fontSize: 15,
     fontWeight: "700",
     color: colors.white,
+  },
+  serviceDescText: {
+    fontSize: 13,
+    color: colors.neutral[500],
+    marginTop: 2,
+    marginBottom: 4,
+    lineHeight: 18,
+  },
+  emptyTabState: {
+    padding: spacing.xl,
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: colors.white,
+    borderRadius: 16,
+    marginVertical: spacing.md,
+  },
+  emptyTabTitle: {
+    fontSize: 16,
+    fontWeight: "700",
+    color: colors.neutral[800],
+    marginTop: spacing.md,
+  },
+  emptyTabSubtitle: {
+    fontSize: 13,
+    color: colors.neutral[500],
+    textAlign: "center",
+    marginTop: 4,
+    paddingHorizontal: spacing.lg,
+    lineHeight: 18,
+  },
+  providerReplyBox: {
+    marginTop: spacing.sm,
+    backgroundColor: "#F0FDF4",
+    padding: spacing.sm,
+    borderRadius: 8,
+    borderLeftWidth: 3,
+    borderLeftColor: colors.primary[500],
+  },
+  replyHeaderRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+    marginBottom: 3,
+  },
+  replyAuthorText: {
+    fontSize: 12,
+    fontWeight: "600",
+    color: colors.primary[700],
+  },
+  replyContentText: {
+    fontSize: 13,
+    color: colors.neutral[700],
+    fontStyle: "italic",
+    lineHeight: 18,
   },
 });

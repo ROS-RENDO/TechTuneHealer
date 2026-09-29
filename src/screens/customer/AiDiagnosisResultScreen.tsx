@@ -6,6 +6,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { colors, spacing, fontSize, fontWeight, borderRadius, shadows } from '../../constants/theme';
 import { CameraCapture } from '../../components/CameraCapture';
 import { Button } from '../../components/Button';
+import { AnimatedEntrance } from '../../components';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
 // Ensure you replace this with your actual local or remote backend IP
@@ -74,71 +75,78 @@ export function AiDiagnosisResultScreen() {
   return (
     <SafeAreaView style={styles.container} edges={["bottom"]}>
       <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
-        <View style={styles.header}>
-          <Text style={styles.title}>AI Car Scanner</Text>
-          <Text style={styles.subtitle}>Upload a photo of the damaged part or dashboard warning light for instant AI analysis.</Text>
-        </View>
+        <AnimatedEntrance delay={0} direction="down">
+          <View style={styles.header}>
+            <Text style={styles.title}>AI Car Scanner</Text>
+            <Text style={styles.subtitle}>Upload a photo of the damaged part or dashboard warning light for instant AI analysis.</Text>
+          </View>
+        </AnimatedEntrance>
 
-        <View style={styles.captureSection}>
-          <CameraCapture 
-            onImageSelected={handleImageSelected} 
-            isLoading={isScanning} 
-          />
-        </View>
-
-        {report && (
-          <View style={styles.reportCard}>
-            <View style={styles.reportHeader}>
-              <Ionicons name="checkmark-circle" size={24} color={colors.success[600]} />
-              <Text style={styles.reportTitle}>Analysis Complete</Text>
-            </View>
-
-            <View style={styles.reportRow}>
-              <Text style={styles.reportLabel}>Severity:</Text>
-              <View style={[
-                styles.severityBadge, 
-                report.severity === 'HIGH' ? styles.severityHigh : 
-                report.severity === 'MEDIUM' ? styles.severityMedium : styles.severityLow
-              ]}>
-                <Text style={styles.severityText}>{report.severity}</Text>
-              </View>
-            </View>
-
-            <View style={styles.reportRow}>
-              <Text style={styles.reportLabel}>Summary:</Text>
-              <Text style={styles.reportValue}>{report.resultSummary}</Text>
-            </View>
-
-            {report.details && (
-              <View style={styles.detailsBox}>
-                <Text style={styles.detailsTitle}>Details</Text>
-                <Text style={styles.detailsText}>Part: {report.details.part}</Text>
-                <Text style={styles.detailsText}>Issue: {report.details.issue}</Text>
-                <Text style={styles.detailsText}>Confidence: {report.details.confidence ? `${(report.details.confidence * 100).toFixed(0)}%` : 'N/A'}</Text>
-              </View>
-            )}
-
-            <Button 
-              title="Find a Mechanic" 
-              variant="primary" 
-              style={styles.actionButton}
-              onPress={() => {
-                // Navigate to the Search tab inside CustomerTabs
-                (navigation as any).navigate('CustomerTabs', { screen: 'Search' });
-              }}
+        <AnimatedEntrance delay={60} direction="up">
+          <View style={styles.captureSection}>
+            <CameraCapture 
+              onImageSelected={handleImageSelected} 
+              isLoading={isScanning} 
             />
           </View>
+        </AnimatedEntrance>
+
+        {report && (
+          <AnimatedEntrance delay={0} direction="up">
+            <View style={styles.reportCard}>
+              <View style={styles.reportHeader}>
+                <Ionicons name="checkmark-circle" size={24} color={colors.success[600]} />
+                <Text style={styles.reportTitle}>Analysis Complete</Text>
+              </View>
+
+              <View style={styles.reportRow}>
+                <Text style={styles.reportLabel}>Severity:</Text>
+                <View style={[
+                  styles.severityBadge, 
+                  report.severity === 'HIGH' ? styles.severityHigh : 
+                  report.severity === 'MEDIUM' ? styles.severityMedium : styles.severityLow
+                ]}>
+                  <Text style={styles.severityText}>{report.severity}</Text>
+                </View>
+              </View>
+
+              <View style={styles.reportRow}>
+                <Text style={styles.reportLabel}>Summary:</Text>
+                <Text style={styles.reportValue}>{report.resultSummary}</Text>
+              </View>
+
+              {report.details && (
+                <View style={styles.detailsBox}>
+                  <Text style={styles.detailsTitle}>Details</Text>
+                  <Text style={styles.detailsText}>Part: {report.details.part}</Text>
+                  <Text style={styles.detailsText}>Issue: {report.details.issue}</Text>
+                  <Text style={styles.detailsText}>Confidence: {report.details.confidence ? `${(report.details.confidence * 100).toFixed(0)}%` : 'N/A'}</Text>
+                </View>
+              )}
+
+              <Button 
+                title="Find a Mechanic" 
+                variant="primary" 
+                style={styles.actionButton}
+                onPress={() => {
+                  (navigation as any).navigate('CustomerTabs', { screen: 'Search' });
+                }}
+              />
+            </View>
+          </AnimatedEntrance>
         )}
       </ScrollView>
 
       {!report && imageUri && (
-        <View style={styles.bottomActions}>
-          <Button 
-            title={isScanning ? "Analyzing..." : "Analyze Photo"} 
-            onPress={handleScan} 
-            disabled={isScanning}
-          />
-        </View>
+        <AnimatedEntrance delay={80} direction="up">
+          <View style={styles.bottomActions}>
+            <Button 
+              title={isScanning ? "Analyzing..." : "Analyze Photo"} 
+              onPress={handleScan} 
+              disabled={isScanning}
+            />
+          </View>
+        </AnimatedEntrance>
       )}
     </SafeAreaView>
   );

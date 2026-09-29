@@ -54,12 +54,16 @@ router.post("/register", async (req: Request, res: Response) => {
   });
 
   if (upperRole === "PROVIDER") {
-    // Automatically create a blank ServiceProvider record so the provider can be queried/updated
+    const { businessName, address } = req.body as { businessName?: string; address?: string };
     await prisma.serviceProvider.create({
       data: {
         userId: user.id,
-        businessName: name, // Default to their name initially
-      }
+        businessName: businessName?.trim() || name,
+        address: address?.trim() || null,
+        isVerified: false,
+        approvalStatus: "PENDING",
+        isEmergency: false,
+      },
     });
   }
 
@@ -93,10 +97,94 @@ router.post("/login", async (req: Request, res: Response) => {
     expiresIn: "30d",
   });
 
+  const provider = user.role === "PROVIDER" ? await prisma.serviceProvider.findUnique({ where: { userId: user.id } }) : null;
+
   res.json({
-    user: { id: user.id, name: user.name, email: user.email, phone: user.phone ?? undefined, role: user.role.toLowerCase(), avatar: user.avatar },
+    user: {
+      id: user.id,
+      name: user.name,
+      email: user.email,
+      phone: user.phone ?? undefined,
+      role: user.role.toLowerCase(),
+      avatar: user.avatar,
+      location: provider ? {
+        latitude: provider.lat || 11.5600,
+        longitude: provider.lng || 104.9100,
+        address: provider.address || "Olympic Stadium Area, Phnom Penh",
+      } : undefined,
+    },
     token,
   });
+});
+
+// POST /auth/google — authenticate or register via Google OAuth
+router.post("/google", async (req: Request, res: Response) => {
+  const { email, name, avatar, role = "CUSTOMER" } = req.body as {
+    email: string;
+    name?: string;
+    avatar?: string;
+    googleId?: string;
+    role?: "CUSTOMER" | "PROVIDER";
+  };
+
+  if (!email) {
+    res.status(400).json({ message: "Google email is required" });
+    return;
+  }
+
+  const upperRole = role.toUpperCase() as "CUSTOMER" | "PROVIDER";
+
+  try {
+    let user = await prisma.user.findUnique({ where: { email } });
+    if (!user) {
+      const randomPassword = await bcrypt.hash(Math.random().toString(36) + Date.now(), 10);
+      user = await prisma.user.create({
+        data: {
+          email,
+          name: name || email.split("@")[0] || "Google User",
+          avatar: avatar || undefined,
+          password: randomPassword,
+          role: upperRole,
+        },
+      });
+
+      if (upperRole === "PROVIDER") {
+        await prisma.serviceProvider.create({
+          data: {
+            userId: user.id,
+            businessName: user.name,
+            isVerified: false,
+            approvalStatus: "PENDING",
+            isEmergency: false,
+          },
+        });
+      }
+    } else if (avatar && !user.avatar) {
+      user = await prisma.user.update({
+        where: { id: user.id },
+        data: { avatar },
+      });
+    }
+
+    const token = jwt.sign({ userId: user.id, role: user.role }, JWT_SECRET, {
+      expiresIn: "30d",
+    });
+
+    res.json({
+      user: {
+        id: user.id,
+        name: user.name,
+        email: user.email,
+        phone: user.phone ?? undefined,
+        role: user.role.toLowerCase(),
+        avatar: user.avatar,
+      },
+      token,
+    });
+  } catch (error) {
+    console.error("Google auth error:", error);
+    res.status(500).json({ message: "Failed to authenticate with Google" });
+  }
 });
 
 // POST /auth/send-otp
@@ -166,7 +254,18 @@ router.get("/profile", authenticate, async (req: AuthRequest, res: Response) => 
     select: { id: true, name: true, email: true, phone: true, role: true, avatar: true, createdAt: true },
   });
   if (!user) { res.status(404).json({ message: "User not found" }); return; }
-  res.json({ ...user, role: user.role.toLowerCase() });
+
+  const provider = user.role === "PROVIDER" ? await prisma.serviceProvider.findUnique({ where: { userId: user.id } }) : null;
+
+  res.json({
+    ...user,
+    role: user.role.toLowerCase(),
+    location: provider ? {
+      latitude: provider.lat || 11.5600,
+      longitude: provider.lng || 104.9100,
+      address: provider.address || "Olympic Stadium Area, Phnom Penh",
+    } : undefined,
+  });
 });
 
 // PUT /auth/profile

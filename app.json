@@ -10,7 +10,9 @@
       "resizeMode": "contain",
       "backgroundColor": "#1E40AF"
     },
-    "assetBundlePatterns": ["**/*"],
+    "assetBundlePatterns": [
+      "**/*"
+    ],
     "ios": {
       "supportsTablet": true,
       "bundleIdentifier": "com.techtune.healer",
@@ -24,7 +26,10 @@
         "backgroundColor": "#1E40AF"
       },
       "package": "com.techtune.healer",
-      "permissions": ["ACCESS_FINE_LOCATION", "ACCESS_COARSE_LOCATION"]
+      "permissions": [
+        "ACCESS_FINE_LOCATION",
+        "ACCESS_COARSE_LOCATION"
+      ]
     },
     "web": {
       "favicon": ""
@@ -35,7 +40,13 @@
         {
           "locationAlwaysAndWhenInUsePermission": "Allow TechTune Healer to use your location."
         }
-      ]
+      ],
+      "expo-font",
+      "expo-image",
+      "expo-router",
+      "expo-splash-screen",
+      "expo-status-bar",
+      "expo-web-browser"
     ]
   }
 }

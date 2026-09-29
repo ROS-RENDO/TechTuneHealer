@@ -10,6 +10,7 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { useNavigation } from "@react-navigation/native";
 import { Ionicons } from "@expo/vector-icons";
 import { Button } from "../../components/Button";
+import { AnimatedEntrance } from "../../components";
 import {
   colors,
   spacing,
@@ -116,145 +117,155 @@ export function DiagnosticsScreen() {
     <SafeAreaView style={styles.container} edges={["bottom"]}>
       <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
         {/* Header Info */}
-        <View style={styles.infoCard}>
-          <View style={styles.infoIconContainer}>
-            <Ionicons
-              name="medical-outline"
-              size={28}
-              color={colors.primary[600]}
-            />
+        <AnimatedEntrance delay={0} direction="down">
+          <View style={styles.infoCard}>
+            <View style={styles.infoIconContainer}>
+              <Ionicons
+                name="medical-outline"
+                size={28}
+                color={colors.primary[600]}
+              />
+            </View>
+            <View style={styles.infoContent}>
+              <Text style={styles.infoTitle}>Car Symptom Checker</Text>
+              <Text style={styles.infoSubtitle}>
+                Select the symptoms you&apos;re experiencing and get instant diagnostic
+                suggestions
+              </Text>
+            </View>
           </View>
-          <View style={styles.infoContent}>
-            <Text style={styles.infoTitle}>Car Symptom Checker</Text>
-            <Text style={styles.infoSubtitle}>
-              Select the symptoms you&apos;re experiencing and get instant diagnostic
-              suggestions
-            </Text>
-          </View>
-        </View>
+        </AnimatedEntrance>
 
         {/* AI Photo Scan Section */}
-        <View style={styles.aiScanSection}>
-          <Text style={styles.sectionTitle}>AI Photo Scanner</Text>
-          <Text style={styles.sectionSubtitle}>Take a photo of the damaged part or warning light and let AI diagnose it instantly.</Text>
-          <Button 
-            title="Scan with AI" 
-            variant="outline" 
-            onPress={() => navigation.navigate("AiDiagnosisResult" as never)} 
-          />
-        </View>
+        <AnimatedEntrance delay={70} direction="up">
+          <View style={styles.aiScanSection}>
+            <Text style={styles.sectionTitle}>AI Photo Scanner</Text>
+            <Text style={styles.sectionSubtitle}>Take a photo of the damaged part or warning light and let AI diagnose it instantly.</Text>
+            <Button 
+              title="Scan with AI" 
+              variant="outline" 
+              onPress={() => navigation.navigate("AiDiagnosisResult" as never)} 
+            />
+          </View>
+        </AnimatedEntrance>
 
         {/* Symptom Categories */}
-        <View style={styles.categoriesSection}>
-          <Text style={styles.sectionTitle}>Select Symptoms</Text>
+        <AnimatedEntrance delay={140} direction="up">
+          <View style={styles.categoriesSection}>
+            <Text style={styles.sectionTitle}>Select Symptoms</Text>
 
-          {SYMPTOM_CATEGORIES.map((category) => (
-            <View key={category.id} style={styles.categoryCard}>
-              <TouchableOpacity
-                style={styles.categoryHeader}
-                onPress={() => toggleCategory(category.id)}
-              >
-                <View style={styles.categoryLeft}>
-                  <View style={styles.categoryIcon}>
+            {SYMPTOM_CATEGORIES.map((category) => (
+              <View key={category.id} style={styles.categoryCard}>
+                <TouchableOpacity
+                  style={styles.categoryHeader}
+                  onPress={() => toggleCategory(category.id)}
+                >
+                  <View style={styles.categoryLeft}>
+                    <View style={styles.categoryIcon}>
+                      <Ionicons
+                        name={category.icon as any}
+                        size={22}
+                        color={colors.primary[600]}
+                      />
+                    </View>
+                    <Text style={styles.categoryTitle}>{category.title}</Text>
+                  </View>
+                  <View style={styles.categoryRight}>
+                    {category.symptoms.some((s) =>
+                      selectedSymptoms.includes(s.id),
+                    ) && (
+                      <View style={styles.selectedBadge}>
+                        <Text style={styles.selectedBadgeText}>
+                          {
+                            category.symptoms.filter((s) =>
+                              selectedSymptoms.includes(s.id),
+                            ).length
+                          }
+                        </Text>
+                      </View>
+                    )}
                     <Ionicons
-                      name={category.icon as any}
-                      size={22}
-                      color={colors.primary[600]}
+                      name={
+                        expandedCategory === category.id
+                          ? "chevron-up"
+                          : "chevron-down"
+                      }
+                      size={20}
+                      color={colors.neutral[400]}
                     />
                   </View>
-                  <Text style={styles.categoryTitle}>{category.title}</Text>
-                </View>
-                <View style={styles.categoryRight}>
-                  {category.symptoms.some((s) =>
-                    selectedSymptoms.includes(s.id),
-                  ) && (
-                    <View style={styles.selectedBadge}>
-                      <Text style={styles.selectedBadgeText}>
-                        {
-                          category.symptoms.filter((s) =>
-                            selectedSymptoms.includes(s.id),
-                          ).length
-                        }
-                      </Text>
-                    </View>
-                  )}
-                  <Ionicons
-                    name={
-                      expandedCategory === category.id
-                        ? "chevron-up"
-                        : "chevron-down"
-                    }
-                    size={20}
-                    color={colors.neutral[400]}
-                  />
-                </View>
-              </TouchableOpacity>
+                </TouchableOpacity>
 
-              {expandedCategory === category.id && (
-                <View style={styles.symptomsList}>
-                  {category.symptoms.map((symptom) => {
-                    const isSelected = selectedSymptoms.includes(symptom.id);
-                    return (
-                      <TouchableOpacity
-                        key={symptom.id}
-                        style={styles.symptomItem}
-                        onPress={() => toggleSymptom(symptom.id)}
-                      >
-                        <View
-                          style={[
-                            styles.checkbox,
-                            isSelected && styles.checkboxSelected,
-                          ]}
+                {expandedCategory === category.id && (
+                  <View style={styles.symptomsList}>
+                    {category.symptoms.map((symptom) => {
+                      const isSelected = selectedSymptoms.includes(symptom.id);
+                      return (
+                        <TouchableOpacity
+                          key={symptom.id}
+                          style={styles.symptomItem}
+                          onPress={() => toggleSymptom(symptom.id)}
                         >
-                          {isSelected && (
-                            <Ionicons
-                              name="checkmark"
-                              size={14}
-                              color={colors.white}
-                            />
-                          )}
-                        </View>
-                        <Text
-                          style={[
-                            styles.symptomLabel,
-                            isSelected && styles.symptomLabelSelected,
-                          ]}
-                        >
-                          {symptom.label}
-                        </Text>
-                      </TouchableOpacity>
-                    );
-                  })}
-                </View>
-              )}
-            </View>
-          ))}
-        </View>
+                          <View
+                            style={[
+                              styles.checkbox,
+                              isSelected && styles.checkboxSelected,
+                            ]}
+                          >
+                            {isSelected && (
+                              <Ionicons
+                                name="checkmark"
+                                size={14}
+                                color={colors.white}
+                              />
+                            )}
+                          </View>
+                          <Text
+                            style={[
+                              styles.symptomLabel,
+                              isSelected && styles.symptomLabelSelected,
+                            ]}
+                          >
+                            {symptom.label}
+                          </Text>
+                        </TouchableOpacity>
+                      );
+                    })}
+                  </View>
+                )}
+              </View>
+            ))}
+          </View>
+        </AnimatedEntrance>
 
         {/* Selected Summary */}
         {selectedSymptoms.length > 0 && (
-          <View style={styles.summaryCard}>
-            <Text style={styles.summaryTitle}>
-              {selectedSymptoms.length} symptom
-              {selectedSymptoms.length > 1 ? "s" : ""} selected
-            </Text>
-            <TouchableOpacity onPress={() => setSelectedSymptoms([])}>
-              <Text style={styles.clearText}>Clear all</Text>
-            </TouchableOpacity>
-          </View>
+          <AnimatedEntrance delay={180} direction="up">
+            <View style={styles.summaryCard}>
+              <Text style={styles.summaryTitle}>
+                {selectedSymptoms.length} symptom
+                {selectedSymptoms.length > 1 ? "s" : ""} selected
+              </Text>
+              <TouchableOpacity onPress={() => setSelectedSymptoms([])}>
+                <Text style={styles.clearText}>Clear all</Text>
+              </TouchableOpacity>
+            </View>
+          </AnimatedEntrance>
         )}
       </ScrollView>
 
       {/* Bottom Action */}
-      <View style={styles.bottomActions}>
-        <Button
-          title={`Diagnose${selectedSymptoms.length > 0 ? ` (${selectedSymptoms.length})` : ""}`}
-          onPress={handleDiagnose}
-          variant="primary"
-          size="large"
-          disabled={selectedSymptoms.length === 0}
-        />
-      </View>
+      <AnimatedEntrance delay={220} direction="up">
+        <View style={styles.bottomActions}>
+          <Button
+            title={`Diagnose${selectedSymptoms.length > 0 ? ` (${selectedSymptoms.length})` : ""}`}
+            onPress={handleDiagnose}
+            variant="primary"
+            size="large"
+            disabled={selectedSymptoms.length === 0}
+          />
+        </View>
+      </AnimatedEntrance>
     </SafeAreaView>
   );
 }

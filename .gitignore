@@ -1,34 +1,20 @@
-# Dependencies
 node_modules/
-package-lock.json.lock
-
-# Expo
-.expo/
-dist/
-web-build/
-
-# Native builds
-android/
-ios/
-
-# Environment files
 .env
 .env.local
-.env*.local
-
-# Logs
-npm-debug.*
-*.log
-
-# Keystores / Secrets
-*.jks
-*.p8
-*.p12
-*.key
-*.mobileprovision
-*.orig.*
-
-# Editor / OS
-.DS_Store
+dist/
+build/
+.expo/
+.expo-shared/
 .vscode/
 .idea/
+*.log
+.DS_Store
+Thumbs.db
+/generated/
+.turbo/
+
+# Backend runtime artifacts
+backend/uploads/
+backend/src/generated/
+.scannerwork/
+*.zip

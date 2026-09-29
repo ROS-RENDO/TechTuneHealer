@@ -20,6 +20,7 @@ import {
   fontWeight,
   borderRadius,
 } from "../../constants/theme";
+import { AnimatedEntrance } from "../../components";
 import { useAuthStore } from "../../store";
 import api from "../../services/api";
 
@@ -96,15 +97,17 @@ export function ChatScreen() {
   return (
     <SafeAreaView style={styles.container}>
       {/* Header */}
-      <View style={styles.header}>
-        <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
-          <Ionicons name="arrow-back" size={24} color={colors.neutral[900]} />
-        </TouchableOpacity>
-        <View style={styles.headerInfo}>
-          <Text style={styles.headerTitle}>Booking Chat</Text>
-          <Text style={styles.headerSubtitle}>Booking #{bookingId?.slice(-6)}</Text>
+      <AnimatedEntrance delay={0} direction="down">
+        <View style={styles.header}>
+          <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
+            <Ionicons name="arrow-back" size={24} color={colors.neutral[900]} />
+          </TouchableOpacity>
+          <View style={styles.headerInfo}>
+            <Text style={styles.headerTitle}>Booking Chat</Text>
+            <Text style={styles.headerSubtitle}>Booking #{bookingId?.slice(-6)}</Text>
+          </View>
         </View>
-      </View>
+      </AnimatedEntrance>
 
       <KeyboardAvoidingView
         behavior={Platform.OS === "ios" ? "padding" : "height"}
@@ -133,29 +136,31 @@ export function ChatScreen() {
           />
         )}
 
-        <View style={styles.inputContainer}>
-          <TextInput
-            style={styles.input}
-            placeholder="Type a message..."
-            value={newMessage}
-            onChangeText={setNewMessage}
-            placeholderTextColor={colors.neutral[400]}
-            multiline
-            returnKeyType="send"
-            onSubmitEditing={handleSend}
-          />
-          <TouchableOpacity
-            style={[styles.sendButton, (!newMessage.trim() || isSending) && styles.sendButtonDisabled]}
-            onPress={handleSend}
-            disabled={!newMessage.trim() || isSending}
-          >
-            {isSending ? (
-              <ActivityIndicator size="small" color={colors.white} />
-            ) : (
-              <Ionicons name="send" size={20} color={colors.white} />
-            )}
-          </TouchableOpacity>
-        </View>
+        <AnimatedEntrance delay={80} direction="up">
+          <View style={styles.inputContainer}>
+            <TextInput
+              style={styles.input}
+              placeholder="Type a message..."
+              value={newMessage}
+              onChangeText={setNewMessage}
+              placeholderTextColor={colors.neutral[400]}
+              multiline
+              returnKeyType="send"
+              onSubmitEditing={handleSend}
+            />
+            <TouchableOpacity
+              style={[styles.sendButton, (!newMessage.trim() || isSending) && styles.sendButtonDisabled]}
+              onPress={handleSend}
+              disabled={!newMessage.trim() || isSending}
+            >
+              {isSending ? (
+                <ActivityIndicator size="small" color={colors.white} />
+              ) : (
+                <Ionicons name="send" size={20} color={colors.white} />
+              )}
+            </TouchableOpacity>
+          </View>
+        </AnimatedEntrance>
       </KeyboardAvoidingView>
     </SafeAreaView>
   );

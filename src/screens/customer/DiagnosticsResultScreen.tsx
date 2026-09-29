@@ -9,6 +9,7 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { useNavigation, useRoute } from "@react-navigation/native";
 import { Ionicons } from "@expo/vector-icons";
 import { Button } from "../../components/Button";
+import { AnimatedEntrance } from "../../components";
 import {
   colors,
   spacing,
@@ -138,193 +139,187 @@ export function DiagnosticsResultScreen() {
     <SafeAreaView style={styles.container} edges={["bottom"]}>
       <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
         {/* Overall Assessment */}
-        <View
-          style={[
-            styles.assessmentCard,
-            { backgroundColor: getSeverityColor(overallSeverity).bg },
-          ]}
-        >
-          <View style={styles.assessmentIcon}>
-            <Ionicons
-              name={
-                overallSeverity === "high"
-                  ? "warning"
-                  : overallSeverity === "medium"
-                    ? "alert-circle"
-                    : "checkmark-circle"
-              }
-              size={40}
-              color={getSeverityColor(overallSeverity).text}
-            />
-          </View>
-          <Text
+        <AnimatedEntrance delay={0} direction="down">
+          <View
             style={[
-              styles.assessmentTitle,
-              { color: getSeverityColor(overallSeverity).text },
+              styles.assessmentCard,
+              { backgroundColor: getSeverityColor(overallSeverity).bg },
             ]}
           >
-            {overallSeverity === "high"
-              ? "Immediate Attention Needed"
-              : overallSeverity === "medium"
-                ? "Schedule Service Soon"
-                : "Minor Issue Detected"}
-          </Text>
-          <Text style={styles.assessmentSubtitle}>
-            Based on {symptomIds.length} symptom
-            {symptomIds.length > 1 ? "s" : ""} you reported
-          </Text>
-        </View>
+            <View style={styles.assessmentIcon}>
+              <Ionicons
+                name={
+                  overallSeverity === "high"
+                    ? "warning"
+                    : overallSeverity === "medium"
+                      ? "alert-circle"
+                      : "checkmark-circle"
+                }
+                size={40}
+                color={getSeverityColor(overallSeverity).text}
+              />
+            </View>
+            <Text
+              style={[
+                styles.assessmentTitle,
+                { color: getSeverityColor(overallSeverity).text },
+              ]}
+            >
+              {overallSeverity === "high"
+                ? "Immediate Attention Needed"
+                : overallSeverity === "medium"
+                  ? "Schedule Service Soon"
+                  : "Minor Issue Detected"}
+            </Text>
+            <Text style={styles.assessmentSubtitle}>
+              Based on {symptomIds.length} symptom
+              {symptomIds.length > 1 ? "s" : ""} you reported
+            </Text>
+          </View>
+        </AnimatedEntrance>
 
         {/* Disclaimer */}
-        <View style={styles.disclaimerCard}>
-          <Ionicons
-            name="information-circle-outline"
-            size={20}
-            color={colors.neutral[500]}
-          />
-          <Text style={styles.disclaimerText}>
-            This is an AI-based preliminary assessment. For accurate diagnosis,
-            please consult a certified mechanic.
-          </Text>
-        </View>
+        <AnimatedEntrance delay={60} direction="up">
+          <View style={styles.disclaimerCard}>
+            <Ionicons
+              name="information-circle-outline"
+              size={20}
+              color={colors.neutral[500]}
+            />
+            <Text style={styles.disclaimerText}>
+              This is an AI-based preliminary assessment. For accurate diagnosis,
+              please consult a certified mechanic.
+            </Text>
+          </View>
+        </AnimatedEntrance>
 
         {/* Results */}
-        <View style={styles.resultsSection}>
-          <Text style={styles.sectionTitle}>Diagnostic Results</Text>
+        <AnimatedEntrance delay={100} direction="up">
+          <View style={styles.resultsSection}>
+            <Text style={styles.sectionTitle}>Diagnostic Results</Text>
 
-          {results.length > 0 ? (
-            results.map((result, index) => {
-              const severityColors = getSeverityColor(result.severity);
-              return (
-                <View key={index} style={styles.resultCard}>
-                  {/* Header */}
-                  <View style={styles.resultHeader}>
-                    <View
-                      style={[
-                        styles.severityBadge,
-                        { backgroundColor: severityColors.bg },
-                      ]}
-                    >
-                      <Text
+            {results.length > 0 ? (
+              results.map((result, index) => {
+                const severityColors = getSeverityColor(result.severity);
+                return (
+                  <View key={index} style={styles.resultCard}>
+                    {/* Header */}
+                    <View style={styles.resultHeader}>
+                      <View
                         style={[
-                          styles.severityText,
-                          { color: severityColors.text },
+                          styles.severityBadge,
+                          { backgroundColor: severityColors.bg },
                         ]}
                       >
-                        {getSeverityLabel(result.severity)}
+                        <Text
+                          style={[
+                            styles.severityText,
+                            { color: severityColors.text },
+                          ]}
+                        >
+                          {getSeverityLabel(result.severity)}
+                        </Text>
+                      </View>
+                      <Text style={styles.estimatedCost}>
+                        Est. {result.estimatedCost}
                       </Text>
                     </View>
-                    <Text style={styles.estimatedCost}>
-                      Est. {result.estimatedCost}
-                    </Text>
-                  </View>
 
-                  {/* Possible Causes */}
-                  <View style={styles.resultSection}>
-                    <Text style={styles.resultSectionTitle}>
-                      Possible Causes
-                    </Text>
-                    {result.possibleCauses.map((cause, i) => (
-                      <View key={i} style={styles.listItem}>
-                        <View style={styles.bullet} />
-                        <Text style={styles.listItemText}>{cause}</Text>
-                      </View>
-                    ))}
-                  </View>
-
-                  {/* Suggested Actions */}
-                  <View style={styles.resultSection}>
-                    <Text style={styles.resultSectionTitle}>
-                      Suggested Actions
-                    </Text>
-                    {result.suggestedActions.map((action, i) => (
-                      <View key={i} style={styles.listItem}>
-                        <View style={styles.actionNumber}>
-                          <Text style={styles.actionNumberText}>{i + 1}</Text>
+                    {/* Possible Causes */}
+                    <View style={styles.resultSection}>
+                      <Text style={styles.resultSectionTitle}>
+                        Possible Causes
+                      </Text>
+                      {result.possibleCauses.map((cause, i) => (
+                        <View key={i} style={styles.listItem}>
+                          <View style={styles.bullet} />
+                          <Text style={styles.listItemText}>{cause}</Text>
                         </View>
-                        <Text style={styles.listItemText}>{action}</Text>
-                      </View>
-                    ))}
+                      ))}
+                    </View>
+
+                    {/* Suggested Actions */}
+                    <View style={styles.resultSection}>
+                      <Text style={styles.resultSectionTitle}>
+                        Suggested Actions
+                      </Text>
+                      {result.suggestedActions.map((action, i) => (
+                        <View key={i} style={styles.listItem}>
+                          <View style={styles.actionNumber}>
+                            <Text style={styles.actionNumberText}>{i + 1}</Text>
+                          </View>
+                          <Text style={styles.listItemText}>{action}</Text>
+                        </View>
+                      ))}
+                    </View>
                   </View>
-                </View>
-              );
-            })
-          ) : (
-            <View style={styles.noResultsCard}>
-              <Ionicons
-                name="search-outline"
-                size={48}
-                color={colors.neutral[300]}
-              />
-              <Text style={styles.noResultsText}>
-                No diagnostic information available for selected symptoms
-              </Text>
-            </View>
-          )}
-        </View>
+                );
+              })
+            ) : (
+              <View style={styles.noResultsCard}>
+                <Ionicons
+                  name="search-outline"
+                  size={48}
+                  color={colors.neutral[300]}
+                />
+                <Text style={styles.noResultsText}>
+                  No diagnostic information available for selected symptoms
+                </Text>
+              </View>
+            )}
+          </View>
+        </AnimatedEntrance>
 
         {/* Quick Tips */}
-        <View style={styles.tipsSection}>
-          <Text style={styles.sectionTitle}>Quick Tips</Text>
-          <View style={styles.tipsGrid}>
-            <View style={styles.tipCard}>
-              <Ionicons
-                name="car-outline"
-                size={24}
-                color={colors.primary[600]}
-              />
-              <Text style={styles.tipText}>Don&apos;t ignore warning lights</Text>
-            </View>
-            <View style={styles.tipCard}>
-              <Ionicons
-                name="calendar-outline"
-                size={24}
-                color={colors.primary[600]}
-              />
-              <Text style={styles.tipText}>
-                Regular maintenance prevents issues
-              </Text>
-            </View>
-            <View style={styles.tipCard}>
-              <Ionicons
-                name="document-text-outline"
-                size={24}
-                color={colors.primary[600]}
-              />
-              <Text style={styles.tipText}>Keep service records</Text>
-            </View>
-            <View style={styles.tipCard}>
-              <Ionicons
-                name="shield-checkmark-outline"
-                size={24}
-                color={colors.primary[600]}
-              />
-              <Text style={styles.tipText}>Use trusted mechanics</Text>
+        <AnimatedEntrance delay={140} direction="up">
+          <View style={styles.tipsSection}>
+            <Text style={styles.sectionTitle}>Quick Tips</Text>
+            <View style={styles.tipsGrid}>
+              <View style={styles.tipCard}>
+                <Ionicons name="car-outline" size={24} color={colors.primary[600]} />
+                <Text style={styles.tipText}>Don&apos;t ignore warning lights</Text>
+              </View>
+              <View style={styles.tipCard}>
+                <Ionicons name="calendar-outline" size={24} color={colors.primary[600]} />
+                <Text style={styles.tipText}>
+                  Regular maintenance prevents issues
+                </Text>
+              </View>
+              <View style={styles.tipCard}>
+                <Ionicons name="document-text-outline" size={24} color={colors.primary[600]} />
+                <Text style={styles.tipText}>Keep service records</Text>
+              </View>
+              <View style={styles.tipCard}>
+                <Ionicons name="shield-checkmark-outline" size={24} color={colors.primary[600]} />
+                <Text style={styles.tipText}>Use trusted mechanics</Text>
+              </View>
             </View>
           </View>
-        </View>
+        </AnimatedEntrance>
       </ScrollView>
 
       {/* Bottom Actions */}
-      <View style={styles.bottomActions}>
-        <TouchableOpacity
-          style={styles.secondaryButton}
-          onPress={() => navigation.goBack()}
-        >
-          <Ionicons name="arrow-back" size={20} color={colors.neutral[700]} />
-          <Text style={styles.secondaryButtonText}>Back</Text>
-        </TouchableOpacity>
-        <View style={styles.primaryButtonContainer}>
-          <Button
-            title="Find a Mechanic"
-            onPress={() =>
-              navigation.navigate("CustomerTabs", { screen: "Search" })
-            }
-            variant="primary"
-            size="large"
-          />
+      <AnimatedEntrance delay={160} direction="up">
+        <View style={styles.bottomActions}>
+          <TouchableOpacity
+            style={styles.secondaryButton}
+            onPress={() => navigation.goBack()}
+          >
+            <Ionicons name="arrow-back" size={20} color={colors.neutral[700]} />
+            <Text style={styles.secondaryButtonText}>Back</Text>
+          </TouchableOpacity>
+          <View style={styles.primaryButtonContainer}>
+            <Button
+              title="Find a Mechanic"
+              onPress={() =>
+                navigation.navigate("CustomerTabs", { screen: "Search" })
+              }
+              variant="primary"
+              size="large"
+            />
+          </View>
         </View>
-      </View>
+      </AnimatedEntrance>
     </SafeAreaView>
   );
 }

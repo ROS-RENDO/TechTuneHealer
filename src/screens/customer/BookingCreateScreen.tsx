@@ -7,11 +7,13 @@ import {
   TouchableOpacity,
   TextInput,
   Alert,
+  Image,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useNavigation, useRoute } from "@react-navigation/native";
 import { Ionicons } from "@expo/vector-icons";
 import { Button } from "../../components/Button";
+import { AnimatedEntrance } from "../../components";
 import { useBookingStore, useProviderSearchStore } from "../../store";
 import {
   colors,
@@ -23,6 +25,7 @@ import {
 } from "../../constants/theme";
 import { format, addDays } from "date-fns";
 import type { CustomerStackScreenProps } from "../../navigation/types";
+import { getProviderAvatarUrl } from "../../utils/helpers";
 
 const TIME_SLOTS = [
   "09:00",
@@ -130,49 +133,52 @@ export function BookingCreateScreen() {
   return (
     <SafeAreaView style={styles.container} edges={["bottom"]}>
       {/* Progress Indicator */}
-      <View style={styles.progressContainer}>
-        {[1, 2, 3].map((step) => (
-          <View key={step} style={styles.progressStep}>
-            <View
-              style={[
-                styles.progressDot,
-                currentStep >= step && styles.progressDotActive,
-              ]}
-            >
-              {currentStep > step ? (
-                <Ionicons name="checkmark" size={14} color={colors.white} />
-              ) : (
-                <Text
-                  style={[
-                    styles.progressDotText,
-                    currentStep >= step && styles.progressDotTextActive,
-                  ]}
-                >
-                  {step}
-                </Text>
-              )}
-            </View>
-            <Text
-              style={[
-                styles.progressLabel,
-                currentStep >= step && styles.progressLabelActive,
-              ]}
-            >
-              {step === 1 ? "Services" : step === 2 ? "Schedule" : "Confirm"}
-            </Text>
-            {step < 3 && (
+      <AnimatedEntrance delay={0} direction="down">
+        <View style={styles.progressContainer}>
+          {[1, 2, 3].map((step) => (
+            <View key={step} style={styles.progressStep}>
               <View
                 style={[
-                  styles.progressLine,
-                  currentStep > step && styles.progressLineActive,
+                  styles.progressDot,
+                  currentStep >= step && styles.progressDotActive,
                 ]}
-              />
-            )}
-          </View>
-        ))}
-      </View>
+              >
+                {currentStep > step ? (
+                  <Ionicons name="checkmark" size={14} color={colors.white} />
+                ) : (
+                  <Text
+                    style={[
+                      styles.progressDotText,
+                      currentStep >= step && styles.progressDotTextActive,
+                    ]}
+                  >
+                    {step}
+                  </Text>
+                )}
+              </View>
+              <Text
+                style={[
+                  styles.progressLabel,
+                  currentStep >= step && styles.progressLabelActive,
+                ]}
+              >
+                {step === 1 ? "Services" : step === 2 ? "Schedule" : "Confirm"}
+              </Text>
+              {step < 3 && (
+                <View
+                  style={[
+                    styles.progressLine,
+                    currentStep > step && styles.progressLineActive,
+                  ]}
+                />
+              )}
+            </View>
+          ))}
+        </View>
+      </AnimatedEntrance>
 
       <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
+        <AnimatedEntrance key={currentStep} delay={60} direction="up">
         {/* Step 1: Select Services */}
         {currentStep === 1 && (
           <View style={styles.stepContent}>
@@ -327,13 +333,13 @@ export function BookingCreateScreen() {
               <Text style={styles.summaryLabel}>Service Provider</Text>
               <View style={styles.providerRow}>
                 <View style={styles.providerAvatar}>
-                  <Ionicons
-                    name="business"
-                    size={20}
-                    color={colors.neutral[400]}
+                  <Image
+                    source={{ uri: getProviderAvatarUrl(provider) }}
+                    style={styles.providerAvatarImg}
+                    resizeMode="cover"
                   />
                 </View>
-                <View>
+                <View style={{ flex: 1 }}>
                   <Text style={styles.providerName}>
                     {provider?.businessName || "Service Provider"}
                   </Text>
@@ -407,42 +413,45 @@ export function BookingCreateScreen() {
             </View>
           </View>
         )}
+        </AnimatedEntrance>
       </ScrollView>
 
       {/* Bottom Actions */}
-      <View style={styles.bottomActions}>
-        {currentStep > 1 && (
-          <TouchableOpacity style={styles.backButton} onPress={handleBack}>
-            <Ionicons name="arrow-back" size={20} color={colors.neutral[700]} />
-          </TouchableOpacity>
-        )}
-        <View style={styles.nextButtonContainer}>
-          {currentStep < 3 ? (
-            <Button
-              title="Next"
-              onPress={handleNext}
-              variant="primary"
-              size="large"
-              fullWidth
-            />
-          ) : (
-            <Button
-              title="Confirm Booking"
-              onPress={handleConfirmBooking}
-              variant="primary"
-              size="large"
-              fullWidth
-              loading={isLoading}
-            />
+      <AnimatedEntrance delay={140} direction="up">
+        <View style={styles.bottomActions}>
+          {currentStep > 1 && (
+            <TouchableOpacity style={styles.backButton} onPress={handleBack}>
+              <Ionicons name="arrow-back" size={20} color={colors.neutral[700]} />
+            </TouchableOpacity>
+          )}
+          <View style={styles.nextButtonContainer}>
+            {currentStep < 3 ? (
+              <Button
+                title="Next"
+                onPress={handleNext}
+                variant="primary"
+                size="large"
+                fullWidth
+              />
+            ) : (
+              <Button
+                title="Confirm Booking"
+                onPress={handleConfirmBooking}
+                variant="primary"
+                size="large"
+                fullWidth
+                loading={isLoading}
+              />
+            )}
+          </View>
+          {selectedServices.length > 0 && currentStep < 3 && (
+            <View style={styles.totalPreview}>
+              <Text style={styles.totalPreviewLabel}>Total</Text>
+              <Text style={styles.totalPreviewValue}>${calculateTotal()}</Text>
+            </View>
           )}
         </View>
-        {selectedServices.length > 0 && currentStep < 3 && (
-          <View style={styles.totalPreview}>
-            <Text style={styles.totalPreviewLabel}>Total</Text>
-            <Text style={styles.totalPreviewValue}>${calculateTotal()}</Text>
-          </View>
-        )}
-      </View>
+      </AnimatedEntrance>
     </SafeAreaView>
   );
 }
@@ -670,12 +679,19 @@ const styles = StyleSheet.create({
     gap: spacing.md,
   },
   providerAvatar: {
-    width: 44,
-    height: 44,
+    width: 48,
+    height: 48,
     borderRadius: borderRadius.md,
     backgroundColor: colors.neutral[200],
+    overflow: "hidden",
     alignItems: "center",
     justifyContent: "center",
+    borderWidth: 1.5,
+    borderColor: colors.primary[200],
+  },
+  providerAvatarImg: {
+    width: "100%",
+    height: "100%",
   },
   providerName: {
     fontSize: fontSize.base,

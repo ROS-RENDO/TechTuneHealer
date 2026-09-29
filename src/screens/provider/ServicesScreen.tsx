@@ -1,341 +1,464 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useCallback } from "react";
 import {
   View,
   Text,
   StyleSheet,
   FlatList,
+  ScrollView,
   TouchableOpacity,
   Switch,
   Alert,
   TextInput,
   Modal,
-} from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
-import { Ionicons } from '@expo/vector-icons';
-import { colors, typography, spacing, borderRadius, shadows } from '../../constants/theme';
+  RefreshControl,
+} from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
+import { Ionicons } from "@expo/vector-icons";
+import { AnimatedEntrance } from "../../components";
+import { colors, spacing, borderRadius, shadows } from "../../constants/theme";
+import { INITIAL_SERVICES, MockService } from "../../data/mockProviderData";
+import api from "../../services/api";
 
-interface Service {
-  id: string;
-  name: string;
-  description: string;
-  price: number;
-  duration: string;
-  isActive: boolean;
-  category: string;
-}
+type CategoryFilter =
+  | "All"
+  | "Maintenance"
+  | "Inspection"
+  | "Diagnostics"
+  | "Brakes"
+  | "Tires"
+  | "Electric/Hybrid"
+  | "Engine";
 
-const INITIAL_SERVICES: Service[] = [
-  {
-    id: '1',
-    name: 'Oil Change',
-    description: 'Complete oil and filter change service',
-    price: 45,
-    duration: '30-45 min',
-    isActive: true,
-    category: 'Maintenance',
-  },
-  {
-    id: '2',
-    name: 'Brake Inspection',
-    description: 'Full brake system inspection and adjustment',
-    price: 35,
-    duration: '30 min',
-    isActive: true,
-    category: 'Inspection',
-  },
-  {
-    id: '3',
-    name: 'Tire Rotation',
-    description: 'Rotate all four tires for even wear',
-    price: 25,
-    duration: '20-30 min',
-    isActive: true,
-    category: 'Maintenance',
-  },
-  {
-    id: '4',
-    name: 'Engine Diagnostics',
-    description: 'Computer diagnostic scan and analysis',
-    price: 75,
-    duration: '45-60 min',
-    isActive: true,
-    category: 'Diagnostics',
-  },
-  {
-    id: '5',
-    name: 'AC Service',
-    description: 'Air conditioning inspection and recharge',
-    price: 85,
-    duration: '60 min',
-    isActive: false,
-    category: 'Repair',
-  },
+const CATEGORIES: { key: CategoryFilter; label: string; icon: keyof typeof Ionicons.glyphMap }[] = [
+  { key: "All", label: "All", icon: "apps-outline" },
+  { key: "Maintenance", label: "Maintenance", icon: "build-outline" },
+  { key: "Diagnostics", label: "Diagnostics", icon: "analytics-outline" },
+  { key: "Brakes", label: "Brakes", icon: "disc-outline" },
+  { key: "Tires", label: "Tires", icon: "sync-circle-outline" },
+  { key: "Electric/Hybrid", label: "EV/Hybrid", icon: "flash-outline" },
+  { key: "Inspection", label: "Inspection", icon: "search-outline" },
+  { key: "Engine", label: "Engine", icon: "speedometer-outline" },
 ];
 
 export default function ServicesScreen() {
-  const [services, setServices] = useState<Service[]>(INITIAL_SERVICES);
+  const [services, setServices] = useState<MockService[]>(INITIAL_SERVICES);
+  const [activeCategory, setActiveCategory] = useState<CategoryFilter>("All");
   const [showAddModal, setShowAddModal] = useState(false);
-  const [editingService, setEditingService] = useState<Service | null>(null);
-  const [newService, setNewService] = useState({
-    name: '',
-    description: '',
-    price: '',
-    duration: '',
-    category: 'Maintenance',
+  const [editingService, setEditingService] = useState<MockService | null>(null);
+  const [refreshing, setRefreshing] = useState(false);
+
+  const loadServices = useCallback(async () => {
+    try {
+      const me = await api.providers.getMe();
+      if (me && (me as any).services && (me as any).services.length > 0) {
+        const seededServices: MockService[] = (me as any).services.map((s: any) => {
+          const nameLower = (s.name || "").toLowerCase();
+          let category: MockService["category"] = "Maintenance";
+          if (nameLower.includes("brake")) category = "Brakes";
+          else if (nameLower.includes("tire") || nameLower.includes("wheel")) category = "Tires";
+          else if (nameLower.includes("battery") || nameLower.includes("electric") || nameLower.includes("hybrid")) category = "Diagnostics";
+          else if (nameLower.includes("engine") || nameLower.includes("tune")) category = "Engine";
+          else if (nameLower.includes("scan") || nameLower.includes("diagnostic")) category = "Diagnostics";
+
+          return {
+            id: s.id,
+            name: s.name,
+            category,
+            description: s.description || "Professional automotive service",
+            price: Number(s.price) || 25,
+            durationMinutes: 45,
+            isActive: true,
+          };
+        });
+
+        // Merge seeded provider services with default templates to ensure complete categories
+        const existingIds = new Set(seededServices.map(s => s.name.toLowerCase()));
+        const remainingTemplates = INITIAL_SERVICES.filter(t => !existingIds.has(t.name.toLowerCase()));
+        setServices([...seededServices, ...remainingTemplates]);
+      }
+    } catch {
+      // Keep initial templates on network error
+    }
+  }, []);
+
+  useEffect(() => {
+    loadServices();
+  }, [loadServices]);
+
+  const onRefresh = async () => {
+    setRefreshing(true);
+    await loadServices();
+    setRefreshing(false);
+  };
+
+  const [formName, setFormName] = useState("");
+  const [formCategory, setFormCategory] = useState<MockService["category"]>("Maintenance");
+  const [formDescription, setFormDescription] = useState("");
+  const [formPrice, setFormPrice] = useState("");
+  const [formDuration, setFormDuration] = useState("40");
+
+  const filteredServices = services.filter((s) => {
+    if (activeCategory === "All") return true;
+    return s.category === activeCategory;
   });
 
   const toggleService = (id: string) => {
-    setServices(
-      services.map((service) =>
-        service.id === id ? { ...service, isActive: !service.isActive } : service
-      )
+    setServices((prev) =>
+      prev.map((s) => (s.id === id ? { ...s, isActive: !s.isActive } : s))
     );
   };
 
   const deleteService = (id: string) => {
-    Alert.alert('Delete Service', 'Are you sure you want to delete this service?', [
-      { text: 'Cancel', style: 'cancel' },
+    Alert.alert("Delete Service", "Are you sure you want to remove this service from your catalog?", [
+      { text: "Cancel", style: "cancel" },
       {
-        text: 'Delete',
-        style: 'destructive',
-        onPress: () => setServices(services.filter((s) => s.id !== id)),
+        text: "Delete",
+        style: "destructive",
+        onPress: () => setServices((prev) => prev.filter((s) => s.id !== id)),
       },
     ]);
   };
 
-  const handleAddService = () => {
-    if (!newService.name || !newService.price) {
-      Alert.alert('Error', 'Please fill in all required fields');
+  const handleOpenAdd = () => {
+    setEditingService(null);
+    setFormName("");
+    setFormCategory("Maintenance");
+    setFormDescription("");
+    setFormPrice("");
+    setFormDuration("40");
+    setShowAddModal(true);
+  };
+
+  const handleOpenEdit = (service: MockService) => {
+    setEditingService(service);
+    setFormName(service.name);
+    setFormCategory(service.category);
+    setFormDescription(service.description);
+    setFormPrice(service.price.toString());
+    setFormDuration(service.durationMinutes.toString());
+    setShowAddModal(true);
+  };
+
+  const handleSaveService = () => {
+    const priceNum = parseFloat(formPrice);
+    if (!formName.trim() || isNaN(priceNum) || priceNum <= 0) {
+      Alert.alert("Missing Information", "Please provide a valid service name and price in USD.");
       return;
     }
 
-    const service: Service = {
-      id: Date.now().toString(),
-      name: newService.name,
-      description: newService.description,
-      price: parseFloat(newService.price),
-      duration: newService.duration,
-      category: newService.category,
-      isActive: true,
-    };
+    if (editingService) {
+      setServices((prev) =>
+        prev.map((s) =>
+          s.id === editingService.id
+            ? {
+                ...s,
+                name: formName.trim(),
+                category: formCategory,
+                description: formDescription.trim(),
+                price: priceNum,
+                durationMinutes: parseInt(formDuration) || 40,
+              }
+            : s
+        )
+      );
+    } else {
+      const newServiceItem: MockService = {
+        id: `srv-${Date.now()}`,
+        name: formName.trim(),
+        category: formCategory,
+        description: formDescription.trim() || "Professional automotive service by certified technicians",
+        price: priceNum,
+        durationMinutes: parseInt(formDuration) || 40,
+        isActive: true,
+      };
+      setServices([newServiceItem, ...services]);
+    }
 
-    setServices([...services, service]);
-    setNewService({ name: '', description: '', price: '', duration: '', category: 'Maintenance' });
     setShowAddModal(false);
   };
 
-  const getCategoryIcon = (category: string) => {
+  const getCategoryTheme = (category: string) => {
+    let icon: keyof typeof Ionicons.glyphMap = "construct";
     switch (category) {
-      case 'Maintenance':
-        return 'build-outline';
-      case 'Repair':
-        return 'hammer-outline';
-      case 'Inspection':
-        return 'search-outline';
-      case 'Diagnostics':
-        return 'analytics-outline';
+      case "Maintenance":
+        icon = "build";
+        break;
+      case "Diagnostics":
+        icon = "hardware-chip";
+        break;
+      case "Brakes":
+        icon = "speedometer";
+        break;
+      case "Tires":
+        icon = "disc";
+        break;
+      case "Electric/Hybrid":
+        icon = "flash";
+        break;
+      case "Inspection":
+        icon = "search";
+        break;
+      case "Engine":
+        icon = "speedometer";
+        break;
       default:
-        return 'construct-outline';
+        icon = "construct";
     }
+    return { color: colors.neutral[700], bg: colors.neutral[100], icon };
   };
 
-  const renderServiceItem = ({ item }: { item: Service }) => (
-    <View style={[styles.serviceCard, !item.isActive && styles.serviceCardInactive]}>
-      <View style={styles.serviceHeader}>
-        <View style={styles.serviceIconContainer}>
-          <Ionicons
-            name={getCategoryIcon(item.category) as any}
-            size={24}
-            color={item.isActive ? colors.primary[500] : colors.textSecondary}
+  const renderServiceItem = ({ item }: { item: MockService }) => {
+    const theme = getCategoryTheme(item.category);
+
+    return (
+      <View style={[styles.serviceCard, !item.isActive && styles.serviceCardInactive]}>
+        <View style={styles.cardTopRow}>
+          <View style={[styles.iconBox, { backgroundColor: theme.bg }]}>
+            <Ionicons name={theme.icon} size={20} color={theme.color} />
+          </View>
+
+          <View style={styles.cardHeaderMeta}>
+            <View style={styles.badgeRow}>
+              <View style={[styles.categoryPill, { backgroundColor: theme.bg }]}>
+                <Text style={[styles.categoryPillText, { color: theme.color }]}>
+                  {item.category}
+                </Text>
+              </View>
+              <View style={styles.durationPill}>
+                <Ionicons name="time-outline" size={11} color={colors.neutral[500]} />
+                <Text style={styles.durationPillText}>{item.durationMinutes}m</Text>
+              </View>
+            </View>
+            <Text style={styles.serviceNameText}>{item.name}</Text>
+          </View>
+
+          <Switch
+            value={item.isActive}
+            onValueChange={() => toggleService(item.id)}
+            trackColor={{ false: colors.neutral[300], true: colors.primary[600] }}
+            thumbColor={colors.white}
           />
         </View>
-        <View style={styles.serviceInfo}>
-          <Text style={[styles.serviceName, !item.isActive && styles.textInactive]}>
-            {item.name}
-          </Text>
-          <Text style={styles.serviceCategory}>{item.category}</Text>
-        </View>
-        <Switch
-          value={item.isActive}
-          onValueChange={() => toggleService(item.id)}
-          trackColor={{ false: colors.border, true: colors.primaryLight }}
-          thumbColor={item.isActive ? colors.primary[500] : colors.textSecondary}
-        />
-      </View>
 
-      <Text style={[styles.serviceDescription, !item.isActive && styles.textInactive]}>
-        {item.description}
-      </Text>
+        <View style={styles.cardBottomRow}>
+          <View style={styles.priceContainer}>
+            <Text style={styles.priceCurrency}>$</Text>
+            <Text style={styles.priceValue}>{item.price.toFixed(2)}</Text>
+            <Text style={styles.pricePer}>USD</Text>
+          </View>
 
-      <View style={styles.serviceDetails}>
-        <View style={styles.detailItem}>
-          <Ionicons name="cash-outline" size={16} color={colors.textSecondary} />
-          <Text style={styles.detailText}>${item.price}</Text>
-        </View>
-        <View style={styles.detailItem}>
-          <Ionicons name="time-outline" size={16} color={colors.textSecondary} />
-          <Text style={styles.detailText}>{item.duration}</Text>
+          <View style={styles.cardActionButtons}>
+            <TouchableOpacity
+              style={styles.actionIconButton}
+              onPress={() => handleOpenEdit(item)}
+            >
+              <Ionicons name="create-outline" size={16} color={colors.primary[600]} />
+              <Text style={styles.actionBtnText}>Edit</Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={[styles.actionIconButton, { backgroundColor: colors.error[50] }]}
+              onPress={() => deleteService(item.id)}
+            >
+              <Ionicons name="trash-outline" size={16} color={colors.error[600]} />
+            </TouchableOpacity>
+          </View>
         </View>
       </View>
-
-      <View style={styles.serviceActions}>
-        <TouchableOpacity
-          style={styles.editButton}
-          onPress={() => {
-            setEditingService(item);
-            setNewService({
-              name: item.name,
-              description: item.description,
-              price: item.price.toString(),
-              duration: item.duration,
-              category: item.category,
-            });
-            setShowAddModal(true);
-          }}
-        >
-          <Ionicons name="pencil-outline" size={18} color={colors.primary[500]} />
-          <Text style={styles.editButtonText}>Edit</Text>
-        </TouchableOpacity>
-        <TouchableOpacity style={styles.deleteButton} onPress={() => deleteService(item.id)}>
-          <Ionicons name="trash-outline" size={18} color={colors.error[500]} />
-          <Text style={styles.deleteButtonText}>Delete</Text>
-        </TouchableOpacity>
-      </View>
-    </View>
-  );
+    );
+  };
 
   return (
-    <SafeAreaView style={styles.container}>
-      <View style={styles.header}>
-        <Text style={styles.title}>My Services</Text>
-        <TouchableOpacity
-          style={styles.addButton}
-          onPress={() => {
-            setEditingService(null);
-            setNewService({ name: '', description: '', price: '', duration: '', category: 'Maintenance' });
-            setShowAddModal(true);
-          }}
-        >
-          <Ionicons name="add" size={24} color={colors.white} />
-        </TouchableOpacity>
-      </View>
+    <SafeAreaView style={styles.container} edges={["top"]}>
+      {/* Header */}
+      <AnimatedEntrance delay={0} direction="down">
+        <View style={styles.header}>
+          <View>
+            <Text style={styles.headerTitle}>Service Catalog</Text>
+            <Text style={styles.headerSubtitle}>
+              {services.filter((s) => s.isActive).length} Active • {services.length} Total Services
+            </Text>
+          </View>
 
-      <View style={styles.statsRow}>
-        <View style={styles.statItem}>
-          <Text style={styles.statValue}>{services.length}</Text>
-          <Text style={styles.statLabel}>Total Services</Text>
+          <TouchableOpacity style={styles.addServiceTopBtn} onPress={handleOpenAdd}>
+            <Ionicons name="add" size={18} color={colors.white} />
+            <Text style={styles.addServiceTopBtnText}>Add Service</Text>
+          </TouchableOpacity>
         </View>
-        <View style={styles.statItem}>
-          <Text style={styles.statValue}>{services.filter((s) => s.isActive).length}</Text>
-          <Text style={styles.statLabel}>Active</Text>
-        </View>
-        <View style={styles.statItem}>
-          <Text style={styles.statValue}>{services.filter((s) => !s.isActive).length}</Text>
-          <Text style={styles.statLabel}>Inactive</Text>
-        </View>
-      </View>
+      </AnimatedEntrance>
 
+      {/* Category Filter Chips Strip */}
+      <AnimatedEntrance delay={60} direction="down">
+        <View style={styles.categoryStripContainer}>
+          <FlatList
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            data={CATEGORIES}
+            keyExtractor={(item) => item.key}
+            contentContainerStyle={styles.categoryStripContent}
+            renderItem={({ item }) => {
+              const isSelected = activeCategory === item.key;
+              return (
+                <TouchableOpacity
+                  style={[styles.categoryChip, isSelected && styles.categoryChipActive]}
+                  onPress={() => setActiveCategory(item.key)}
+                  activeOpacity={0.8}
+                >
+                  <Ionicons
+                    name={item.icon}
+                    size={14}
+                    color={isSelected ? colors.white : colors.neutral[600]}
+                  />
+                  <Text
+                    style={[
+                      styles.categoryChipText,
+                      isSelected && styles.categoryChipTextActive,
+                    ]}
+                  >
+                    {item.label}
+                  </Text>
+                </TouchableOpacity>
+              );
+            }}
+          />
+        </View>
+      </AnimatedEntrance>
+
+      {/* Services List */}
       <FlatList
-        data={services}
+        data={filteredServices}
         keyExtractor={(item) => item.id}
         renderItem={renderServiceItem}
         contentContainerStyle={styles.listContent}
         showsVerticalScrollIndicator={false}
+        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
         ListEmptyComponent={
-          <View style={styles.emptyState}>
-            <Ionicons name="construct-outline" size={64} color={colors.textSecondary} />
-            <Text style={styles.emptyTitle}>No Services Yet</Text>
-            <Text style={styles.emptyText}>Add your first service to start receiving bookings</Text>
+          <View style={styles.emptyContainer}>
+            <Ionicons name="construct-outline" size={48} color={colors.neutral[300]} />
+            <Text style={styles.emptyTitle}>No Services In This Category</Text>
+            <Text style={styles.emptySubtitle}>
+              Tap "Add Service" above to list repair and maintenance packages.
+            </Text>
           </View>
         }
       />
 
-      <Modal visible={showAddModal} animationType="slide" transparent>
-        <View style={styles.modalOverlay}>
-          <View style={styles.modalContent}>
+      {/* Add / Edit Service Modal */}
+      <Modal
+        visible={showAddModal}
+        transparent
+        animationType="slide"
+        onRequestClose={() => setShowAddModal(false)}
+      >
+        <View style={styles.modalBackdrop}>
+          <View style={styles.modalCard}>
             <View style={styles.modalHeader}>
+              <Ionicons
+                name={editingService ? "create" : "add-circle"}
+                size={24}
+                color={colors.primary[600]}
+              />
               <Text style={styles.modalTitle}>
-                {editingService ? 'Edit Service' : 'Add New Service'}
+                {editingService ? "Edit Service Package" : "Add New Workshop Service"}
               </Text>
-              <TouchableOpacity onPress={() => setShowAddModal(false)}>
-                <Ionicons name="close" size={24} color={colors.text} />
-              </TouchableOpacity>
             </View>
 
             <View style={styles.inputGroup}>
-              <Text style={styles.inputLabel}>Service Name *</Text>
+              <Text style={styles.inputLabel}>Service Name</Text>
               <TextInput
-                style={styles.input}
-                placeholder="e.g., Oil Change"
-                value={newService.name}
-                onChangeText={(text) => setNewService({ ...newService, name: text })}
+                style={styles.inputField}
+                value={formName}
+                onChangeText={setFormName}
+                placeholder="e.g. Front Ceramic Brake Pad Replacement"
               />
-            </View>
-
-            <View style={styles.inputGroup}>
-              <Text style={styles.inputLabel}>Description</Text>
-              <TextInput
-                style={[styles.input, styles.textArea]}
-                placeholder="Describe your service..."
-                value={newService.description}
-                onChangeText={(text) => setNewService({ ...newService, description: text })}
-                multiline
-                numberOfLines={3}
-              />
-            </View>
-
-            <View style={styles.inputRow}>
-              <View style={[styles.inputGroup, { flex: 1 }]}>
-                <Text style={styles.inputLabel}>Price ($) *</Text>
-                <TextInput
-                  style={styles.input}
-                  placeholder="0.00"
-                  value={newService.price}
-                  onChangeText={(text) => setNewService({ ...newService, price: text })}
-                  keyboardType="decimal-pad"
-                />
-              </View>
-              <View style={[styles.inputGroup, { flex: 1, marginLeft: spacing.md }]}>
-                <Text style={styles.inputLabel}>Duration</Text>
-                <TextInput
-                  style={styles.input}
-                  placeholder="e.g., 30 min"
-                  value={newService.duration}
-                  onChangeText={(text) => setNewService({ ...newService, duration: text })}
-                />
-              </View>
             </View>
 
             <View style={styles.inputGroup}>
               <Text style={styles.inputLabel}>Category</Text>
-              <View style={styles.categoryOptions}>
-                {['Maintenance', 'Repair', 'Inspection', 'Diagnostics'].map((cat) => (
+              <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.modalCategoryScroll}>
+                {(
+                  [
+                    "Maintenance",
+                    "Diagnostics",
+                    "Brakes",
+                    "Tires",
+                    "Electric/Hybrid",
+                    "Inspection",
+                    "Engine",
+                  ] as MockService["category"][]
+                ).map((cat) => (
                   <TouchableOpacity
                     key={cat}
                     style={[
-                      styles.categoryChip,
-                      newService.category === cat && styles.categoryChipActive,
+                      styles.modalCatPill,
+                      formCategory === cat && styles.modalCatPillActive,
                     ]}
-                    onPress={() => setNewService({ ...newService, category: cat })}
+                    onPress={() => setFormCategory(cat)}
                   >
                     <Text
                       style={[
-                        styles.categoryChipText,
-                        newService.category === cat && styles.categoryChipTextActive,
+                        styles.modalCatPillText,
+                        formCategory === cat && styles.modalCatPillTextActive,
                       ]}
                     >
                       {cat}
                     </Text>
                   </TouchableOpacity>
                 ))}
+              </ScrollView>
+            </View>
+
+            <View style={styles.rowInputs}>
+              <View style={[styles.inputGroup, { flex: 1, marginRight: spacing.sm }]}>
+                <Text style={styles.inputLabel}>Price (USD)</Text>
+                <TextInput
+                  style={styles.inputField}
+                  value={formPrice}
+                  onChangeText={setFormPrice}
+                  placeholder="45.00"
+                  keyboardType="decimal-pad"
+                />
+              </View>
+
+              <View style={[styles.inputGroup, { flex: 1 }]}>
+                <Text style={styles.inputLabel}>Duration (Minutes)</Text>
+                <TextInput
+                  style={styles.inputField}
+                  value={formDuration}
+                  onChangeText={setFormDuration}
+                  placeholder="40"
+                  keyboardType="number-pad"
+                />
               </View>
             </View>
 
-            <TouchableOpacity style={styles.saveButton} onPress={handleAddService}>
-              <Text style={styles.saveButtonText}>
-                {editingService ? 'Save Changes' : 'Add Service'}
-              </Text>
-            </TouchableOpacity>
+            <View style={styles.inputGroup}>
+              <Text style={styles.inputLabel}>Description & Included Labor</Text>
+              <TextInput
+                style={[styles.inputField, { height: 64, textAlignVertical: "top" }]}
+                value={formDescription}
+                onChangeText={setFormDescription}
+                placeholder="Briefly describe what is inspected or replaced..."
+                multiline
+              />
+            </View>
+
+            <View style={styles.modalButtonsRow}>
+              <TouchableOpacity
+                style={styles.modalCancelBtn}
+                onPress={() => setShowAddModal(false)}
+              >
+                <Text style={styles.modalCancelBtnText}>Cancel</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={styles.modalSaveBtn}
+                onPress={handleSaveService}
+              >
+                <Text style={styles.modalSaveBtnText}>
+                  {editingService ? "Update Service" : "Add Service"}
+                </Text>
+              </TouchableOpacity>
+            </View>
           </View>
         </View>
       </Modal>
@@ -346,239 +469,301 @@ export default function ServicesScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: colors.background,
+    backgroundColor: "#F8FAFC",
   },
   header: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
     paddingHorizontal: spacing.lg,
-    paddingVertical: spacing.md,
-    backgroundColor: colors.surface,
-    borderBottomWidth: 1,
-    borderBottomColor: colors.border,
-  },
-  title: {
-    ...typography.h1,
-    color: colors.text,
-  },
-  addButton: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: colors.primary[500],
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  statsRow: {
-    flexDirection: 'row',
-    backgroundColor: colors.surface,
-    paddingVertical: spacing.md,
-    paddingHorizontal: spacing.lg,
-    borderBottomWidth: 1,
-    borderBottomColor: colors.border,
-  },
-  statItem: {
-    flex: 1,
-    alignItems: 'center',
-  },
-  statValue: {
-    ...typography.h2,
-    color: colors.primary[500],
-  },
-  statLabel: {
-    ...typography.caption,
-    color: colors.textSecondary,
-  },
-  listContent: {
-    padding: spacing.lg,
-  },
-  serviceCard: {
-    backgroundColor: colors.surface,
-    borderRadius: borderRadius.lg,
-    padding: spacing.md,
-    marginBottom: spacing.md,
-    ...shadows.small,
-  },
-  serviceCardInactive: {
-    opacity: 0.7,
-  },
-  serviceHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: spacing.sm,
-  },
-  serviceIconContainer: {
-    width: 44,
-    height: 44,
-    borderRadius: borderRadius.md,
-    backgroundColor: colors.primaryLight,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  serviceInfo: {
-    flex: 1,
-    marginLeft: spacing.sm,
-  },
-  serviceName: {
-    ...typography.bodyBold,
-    color: colors.text,
-  },
-  serviceCategory: {
-    ...typography.caption,
-    color: colors.textSecondary,
-  },
-  serviceDescription: {
-    ...typography.body,
-    color: colors.textSecondary,
-    marginBottom: spacing.sm,
-  },
-  textInactive: {
-    color: colors.textSecondary,
-  },
-  serviceDetails: {
-    flexDirection: 'row',
-    gap: spacing.lg,
     paddingTop: spacing.sm,
-    borderTopWidth: 1,
-    borderTopColor: colors.border,
+    paddingBottom: spacing.sm,
   },
-  detailItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing.xs,
+  headerTitle: {
+    fontSize: 22,
+    fontWeight: "700",
+    color: colors.neutral[900],
+    letterSpacing: -0.4,
   },
-  detailText: {
-    ...typography.body,
-    color: colors.text,
-    fontWeight: '600',
+  headerSubtitle: {
+    fontSize: 13,
+    color: colors.neutral[500],
+    marginTop: 2,
   },
-  serviceActions: {
-    flexDirection: 'row',
-    justifyContent: 'flex-end',
-    gap: spacing.md,
-    marginTop: spacing.md,
-    paddingTop: spacing.sm,
-    borderTopWidth: 1,
-    borderTopColor: colors.border,
+  addServiceTopBtn: {
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: colors.primary[600],
+    paddingHorizontal: 12,
+    paddingVertical: 7,
+    borderRadius: borderRadius.full,
+    gap: 4,
+    ...shadows.sm,
   },
-  editButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing.xs,
+  addServiceTopBtnText: {
+    fontSize: 12,
+    fontWeight: "700",
+    color: colors.white,
   },
-  editButtonText: {
-    ...typography.body,
-    color: colors.primary[500],
-    fontWeight: '600',
-  },
-  deleteButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing.xs,
-  },
-  deleteButtonText: {
-    ...typography.body,
-    color: colors.error[500],
-    fontWeight: '600',
-  },
-  emptyState: {
-    alignItems: 'center',
-    paddingVertical: spacing.xl * 2,
-  },
-  emptyTitle: {
-    ...typography.h3,
-    color: colors.text,
-    marginTop: spacing.md,
-  },
-  emptyText: {
-    ...typography.body,
-    color: colors.textSecondary,
+  categoryStripContainer: {
     marginTop: spacing.xs,
-    textAlign: 'center',
-  },
-  modalOverlay: {
-    flex: 1,
-    backgroundColor: 'rgba(0, 0, 0, 0.5)',
-    justifyContent: 'flex-end',
-  },
-  modalContent: {
-    backgroundColor: colors.surface,
-    borderTopLeftRadius: borderRadius.xl,
-    borderTopRightRadius: borderRadius.xl,
-    padding: spacing.lg,
-    maxHeight: '90%',
-  },
-  modalHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: spacing.lg,
-  },
-  modalTitle: {
-    ...typography.h2,
-    color: colors.text,
-  },
-  inputGroup: {
-    marginBottom: spacing.md,
-  },
-  inputLabel: {
-    ...typography.body,
-    color: colors.text,
     marginBottom: spacing.xs,
-    fontWeight: '500',
   },
-  input: {
-    backgroundColor: colors.background,
-    borderRadius: borderRadius.md,
-    padding: spacing.md,
-    ...typography.body,
-    color: colors.text,
-    borderWidth: 1,
-    borderColor: colors.border,
-  },
-  textArea: {
-    height: 80,
-    textAlignVertical: 'top',
-  },
-  inputRow: {
-    flexDirection: 'row',
-  },
-  categoryOptions: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: spacing.sm,
+  categoryStripContent: {
+    paddingHorizontal: spacing.lg,
+    gap: 6,
   },
   categoryChip: {
-    paddingHorizontal: spacing.md,
-    paddingVertical: spacing.sm,
+    flexDirection: "row",
+    alignItems: "center",
+    paddingVertical: 7,
+    paddingHorizontal: 12,
     borderRadius: borderRadius.full,
-    backgroundColor: colors.background,
+    backgroundColor: colors.white,
     borderWidth: 1,
-    borderColor: colors.border,
+    borderColor: colors.neutral[200],
+    marginRight: 6,
+    gap: 6,
   },
   categoryChipActive: {
-    backgroundColor: colors.primaryLight,
-    borderColor: colors.primary[500],
+    backgroundColor: colors.primary[600],
+    borderColor: colors.primary[600],
   },
   categoryChipText: {
-    ...typography.body,
-    color: colors.textSecondary,
+    fontSize: 12,
+    fontWeight: "600",
+    color: colors.neutral[700],
   },
   categoryChipTextActive: {
-    color: colors.primary[500],
-    fontWeight: '600',
+    color: colors.white,
   },
-  saveButton: {
-    backgroundColor: colors.primary[500],
-    borderRadius: borderRadius.md,
+  listContent: {
+    paddingHorizontal: spacing.lg,
+    paddingTop: spacing.sm,
+    paddingBottom: spacing["4xl"],
+  },
+  serviceCard: {
+    backgroundColor: colors.white,
+    borderRadius: borderRadius.xl,
     padding: spacing.md,
-    alignItems: 'center',
+    marginBottom: spacing.md,
+    borderWidth: 1,
+    borderColor: colors.neutral[200],
+    ...shadows.sm,
+  },
+  serviceCardInactive: {
+    opacity: 0.6,
+    backgroundColor: colors.neutral[50],
+  },
+  cardTopRow: {
+    flexDirection: "row",
+    alignItems: "flex-start",
+    gap: spacing.sm,
+  },
+  iconBox: {
+    width: 40,
+    height: 40,
+    borderRadius: borderRadius.lg,
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  cardHeaderMeta: {
+    flex: 1,
+  },
+  badgeRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+    marginBottom: 4,
+  },
+  categoryPill: {
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: borderRadius.sm,
+  },
+  categoryPillText: {
+    fontSize: 10,
+    fontWeight: "700",
+  },
+  durationPill: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 3,
+  },
+  durationPillText: {
+    fontSize: 11,
+    color: colors.neutral[500],
+  },
+  serviceNameText: {
+    fontSize: 15,
+    fontWeight: "700",
+    color: colors.neutral[900],
+  },
+  serviceDescription: {
+    fontSize: 12,
+    color: colors.neutral[600],
+    lineHeight: 17,
+    marginTop: spacing.xs,
+    marginBottom: spacing.sm,
+  },
+  cardBottomRow: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    paddingTop: spacing.xs,
+    borderTopWidth: 1,
+    borderTopColor: colors.neutral[100],
+  },
+  priceContainer: {
+    flexDirection: "row",
+    alignItems: "baseline",
+    gap: 2,
+  },
+  priceCurrency: {
+    fontSize: 13,
+    fontWeight: "700",
+    color: colors.success[700],
+  },
+  priceValue: {
+    fontSize: 18,
+    fontWeight: "800",
+    color: colors.neutral[900],
+  },
+  pricePer: {
+    fontSize: 10,
+    color: colors.neutral[400],
+    marginLeft: 2,
+  },
+  cardActionButtons: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: spacing.xs,
+  },
+  actionIconButton: {
+    flexDirection: "row",
+    alignItems: "center",
+    paddingHorizontal: 8,
+    paddingVertical: 5,
+    borderRadius: borderRadius.md,
+    backgroundColor: colors.primary[50],
+    gap: 4,
+  },
+  actionBtnText: {
+    fontSize: 11,
+    fontWeight: "600",
+    color: colors.primary[700],
+  },
+  emptyContainer: {
+    alignItems: "center",
+    paddingVertical: spacing["4xl"],
+    gap: spacing.xs,
+  },
+  emptyTitle: {
+    fontSize: 16,
+    fontWeight: "700",
+    color: colors.neutral[800],
+  },
+  emptySubtitle: {
+    fontSize: 12,
+    color: colors.neutral[500],
+    textAlign: "center",
+    maxWidth: 260,
+  },
+  modalBackdrop: {
+    flex: 1,
+    backgroundColor: "rgba(15, 23, 42, 0.6)",
+    justifyContent: "center",
+    alignItems: "center",
+    padding: spacing.lg,
+  },
+  modalCard: {
+    backgroundColor: colors.white,
+    borderRadius: borderRadius.xl,
+    padding: spacing.lg,
+    width: "100%",
+    maxWidth: 380,
+    ...shadows.lg,
+  },
+  modalHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: spacing.sm,
+    marginBottom: spacing.md,
+  },
+  modalTitle: {
+    fontSize: 16,
+    fontWeight: "700",
+    color: colors.neutral[900],
+  },
+  inputGroup: {
+    marginBottom: spacing.sm,
+  },
+  inputLabel: {
+    fontSize: 11,
+    fontWeight: "600",
+    color: colors.neutral[700],
+    marginBottom: 4,
+  },
+  inputField: {
+    backgroundColor: colors.neutral[50],
+    borderWidth: 1,
+    borderColor: colors.neutral[300],
+    borderRadius: borderRadius.md,
+    paddingHorizontal: spacing.sm,
+    paddingVertical: 8,
+    fontSize: 13,
+    color: colors.neutral[900],
+  },
+  modalCategoryScroll: {
+    flexDirection: "row",
+  },
+  modalCatPill: {
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: borderRadius.md,
+    backgroundColor: colors.neutral[100],
+    marginRight: 6,
+  },
+  modalCatPillActive: {
+    backgroundColor: colors.primary[600],
+  },
+  modalCatPillText: {
+    fontSize: 11,
+    fontWeight: "600",
+    color: colors.neutral[700],
+  },
+  modalCatPillTextActive: {
+    color: colors.white,
+  },
+  rowInputs: {
+    flexDirection: "row",
+  },
+  modalButtonsRow: {
+    flexDirection: "row",
+    justifyContent: "flex-end",
+    gap: spacing.sm,
     marginTop: spacing.md,
   },
-  saveButtonText: {
-    ...typography.body,
+  modalCancelBtn: {
+    paddingHorizontal: spacing.md,
+    paddingVertical: 9,
+    borderRadius: borderRadius.md,
+    backgroundColor: colors.neutral[100],
+  },
+  modalCancelBtnText: {
+    fontSize: 12,
+    fontWeight: "600",
+    color: colors.neutral[700],
+  },
+  modalSaveBtn: {
+    paddingHorizontal: spacing.md,
+    paddingVertical: 9,
+    borderRadius: borderRadius.md,
+    backgroundColor: colors.primary[600],
+  },
+  modalSaveBtnText: {
+    fontSize: 12,
+    fontWeight: "700",
     color: colors.white,
-    fontWeight: '600',
   },
 });

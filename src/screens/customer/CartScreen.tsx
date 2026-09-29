@@ -1,12 +1,13 @@
 import React, { useEffect, useState, useCallback, useRef } from 'react';
 import {
   View, Text, StyleSheet, FlatList, TouchableOpacity,
-  ActivityIndicator, Alert, Animated,
+  ActivityIndicator, Alert, Animated, Platform,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
 import { colors, spacing, fontSize, fontWeight, borderRadius, shadows } from '../../constants/theme';
+import { AnimatedEntrance } from '../../components';
 import axios from 'axios';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
@@ -28,7 +29,7 @@ export function CartScreen() {
   // Slide-up animation for bottom bar
   const slideUp = useRef(new Animated.Value(100)).current;
   useEffect(() => {
-    Animated.spring(slideUp, { toValue: 0, useNativeDriver: true, bounciness: 4 }).start();
+    Animated.spring(slideUp, { toValue: 0, useNativeDriver: Platform.OS !== 'web', bounciness: 4 }).start();
   }, [slideUp]);
 
   useEffect(() => { fetchCart(); }, []);
@@ -131,15 +132,17 @@ export function CartScreen() {
   return (
     <SafeAreaView style={styles.container} edges={['bottom']}>
       {/* Header */}
-      <View style={styles.header}>
-        <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backBtn}>
-          <Ionicons name="arrow-back" size={22} color={colors.neutral[900]} />
-        </TouchableOpacity>
-        <Text style={styles.headerTitle}>My Cart</Text>
-        {hasItems && (
-          <Text style={styles.itemCount}>{cart.items.length} item{cart.items.length > 1 ? 's' : ''}</Text>
-        )}
-      </View>
+      <AnimatedEntrance delay={0} direction="down">
+        <View style={styles.header}>
+          <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backBtn}>
+            <Ionicons name="arrow-back" size={22} color={colors.neutral[900]} />
+          </TouchableOpacity>
+          <Text style={styles.headerTitle}>My Cart</Text>
+          {hasItems && (
+            <Text style={styles.itemCount}>{cart.items.length} item{cart.items.length > 1 ? 's' : ''}</Text>
+          )}
+        </View>
+      </AnimatedEntrance>
 
       {hasItems ? (
         <>
@@ -185,14 +188,16 @@ export function CartScreen() {
           </Animated.View>
         </>
       ) : (
-        <View style={styles.emptyWrap}>
-          <Ionicons name="cart-outline" size={80} color={colors.neutral[200]} />
-          <Text style={styles.emptyTitle}>Your cart is empty</Text>
-          <Text style={styles.emptySub}>Browse our shop to find the parts you need</Text>
-          <TouchableOpacity style={styles.shopBtn} onPress={() => navigation.navigate('Shop' as never)}>
-            <Text style={styles.shopBtnText}>Browse Shop</Text>
-          </TouchableOpacity>
-        </View>
+        <AnimatedEntrance delay={80} direction="up" style={{ flex: 1, justifyContent: 'center' }}>
+          <View style={styles.emptyWrap}>
+            <Ionicons name="cart-outline" size={80} color={colors.neutral[200]} />
+            <Text style={styles.emptyTitle}>Your cart is empty</Text>
+            <Text style={styles.emptySub}>Browse our shop to find the parts you need</Text>
+            <TouchableOpacity style={styles.shopBtn} onPress={() => navigation.navigate('Shop' as never)}>
+              <Text style={styles.shopBtnText}>Browse Shop</Text>
+            </TouchableOpacity>
+          </View>
+        </AnimatedEntrance>
       )}
     </SafeAreaView>
   );

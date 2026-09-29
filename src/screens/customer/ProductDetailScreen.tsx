@@ -5,6 +5,7 @@ import { useNavigation, useRoute } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
 import { colors, spacing, fontSize, fontWeight, borderRadius } from '../../constants/theme';
 import { Button } from '../../components/Button';
+import { AnimatedEntrance } from '../../components';
 import axios from 'axios';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
@@ -93,55 +94,61 @@ export function ProductDetailScreen() {
   return (
     <SafeAreaView style={styles.container} edges={['bottom']}>
       <ScrollView showsVerticalScrollIndicator={false}>
-        <View style={styles.imageContainer}>
-          {product.imageUrl ? (
-            <Image source={{ uri: product.imageUrl.startsWith('http') ? product.imageUrl : `${API_URL}${product.imageUrl}` }} style={styles.productImage} />
-          ) : (
-            <Ionicons name="construct-outline" size={100} color={colors.neutral[300]} />
-          )}
-        </View>
-        
-        <View style={styles.contentContainer}>
-          <Text style={styles.category}>{product.category?.name || 'General'}</Text>
-          <Text style={styles.name}>{product.name}</Text>
-          <Text style={styles.price}>${product.price.toFixed(2)}</Text>
-          
-          <View style={styles.stockContainer}>
-            <View style={[styles.stockBadge, product.stock > 0 ? styles.inStock : styles.outOfStock]}>
-              <Text style={styles.stockText}>{product.stock > 0 ? `In Stock (${product.stock})` : 'Out of Stock'}</Text>
-            </View>
+        <AnimatedEntrance delay={0} direction="down">
+          <View style={styles.imageContainer}>
+            {product.imageUrl ? (
+              <Image source={{ uri: product.imageUrl.startsWith('http') ? product.imageUrl : `${API_URL}${product.imageUrl}` }} style={styles.productImage} />
+            ) : (
+              <Ionicons name="construct-outline" size={100} color={colors.neutral[300]} />
+            )}
           </View>
+        </AnimatedEntrance>
+        
+        <AnimatedEntrance delay={60} direction="up">
+          <View style={styles.contentContainer}>
+            <Text style={styles.category}>{product.category?.name || 'General'}</Text>
+            <Text style={styles.name}>{product.name}</Text>
+            <Text style={styles.price}>${product.price.toFixed(2)}</Text>
+            
+            <View style={styles.stockContainer}>
+              <View style={[styles.stockBadge, product.stock > 0 ? styles.inStock : styles.outOfStock]}>
+                <Text style={styles.stockText}>{product.stock > 0 ? `In Stock (${product.stock})` : 'Out of Stock'}</Text>
+              </View>
+            </View>
 
-          <Text style={styles.descriptionTitle}>Description</Text>
-          <Text style={styles.description}>{product.description || 'No description available for this product.'}</Text>
-        </View>
+            <Text style={styles.descriptionTitle}>Description</Text>
+            <Text style={styles.description}>{product.description || 'No description available for this product.'}</Text>
+          </View>
+        </AnimatedEntrance>
       </ScrollView>
 
-      <View style={styles.bottomBar}>
-        <View style={styles.quantitySelector}>
-          <TouchableOpacity 
-            style={styles.qtyButton} 
-            onPress={() => setQuantity(Math.max(1, quantity - 1))}
-          >
-            <Ionicons name="remove" size={20} color={colors.neutral[700]} />
-          </TouchableOpacity>
-          <Text style={styles.qtyText}>{quantity}</Text>
-          <TouchableOpacity 
-            style={styles.qtyButton} 
-            onPress={() => setQuantity(quantity + 1)}
-            disabled={quantity >= product.stock}
-          >
-            <Ionicons name="add" size={20} color={quantity >= product.stock ? colors.neutral[300] : colors.neutral[700]} />
-          </TouchableOpacity>
-        </View>
+      <AnimatedEntrance delay={120} direction="up">
+        <View style={styles.bottomBar}>
+          <View style={styles.quantitySelector}>
+            <TouchableOpacity 
+              style={styles.qtyButton} 
+              onPress={() => setQuantity(Math.max(1, quantity - 1))}
+            >
+              <Ionicons name="remove" size={20} color={colors.neutral[700]} />
+            </TouchableOpacity>
+            <Text style={styles.qtyText}>{quantity}</Text>
+            <TouchableOpacity 
+              style={styles.qtyButton} 
+              onPress={() => setQuantity(quantity + 1)}
+              disabled={quantity >= product.stock}
+            >
+              <Ionicons name="add" size={20} color={quantity >= product.stock ? colors.neutral[300] : colors.neutral[700]} />
+            </TouchableOpacity>
+          </View>
 
-        <Button 
-          title={`Add to Cart - $${(product.price * quantity).toFixed(2)}`}
-          onPress={handleAddToCart}
-          disabled={addingToCart || product.stock === 0}
-          style={styles.addToCartButton}
-        />
-      </View>
+          <Button 
+            title={`Add to Cart - $${(product.price * quantity).toFixed(2)}`}
+            onPress={handleAddToCart}
+            disabled={addingToCart || product.stock === 0}
+            style={styles.addToCartButton}
+          />
+        </View>
+      </AnimatedEntrance>
     </SafeAreaView>
   );
 }

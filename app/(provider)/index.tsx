@@ -13,7 +13,7 @@ export default function ProviderIndex() {
   const [isReady, setIsReady] = useState(false);
 
   useEffect(() => {
-    if (!isAuthenticated || user?.role !== "provider") {
+    if (!isAuthenticated || user?.role?.toLowerCase() !== "provider") {
       router.replace("/(auth)/welcome");
       return;
     }

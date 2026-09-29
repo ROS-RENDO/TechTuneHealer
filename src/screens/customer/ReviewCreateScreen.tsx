@@ -13,6 +13,7 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { useNavigation, useRoute } from "@react-navigation/native";
 import { Ionicons } from "@expo/vector-icons";
 import { useBookingStore } from "../../store";
+import { AnimatedEntrance } from "../../components";
 import { colors, spacing, shadows } from "../../constants/theme";
 import type { CustomerStackScreenProps } from "../../navigation/types";
 
@@ -49,13 +50,15 @@ export function ReviewCreateScreen() {
 
   return (
     <SafeAreaView style={styles.container} edges={["top", "bottom"]}>
-      <View style={styles.header}>
-        <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
-          <Ionicons name="arrow-back" size={24} color={colors.neutral[900]} />
-        </TouchableOpacity>
-        <Text style={styles.headerTitle}>Leave a Review</Text>
-        <View style={{ width: 44 }} />
-      </View>
+      <AnimatedEntrance delay={0} direction="down">
+        <View style={styles.header}>
+          <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
+            <Ionicons name="arrow-back" size={24} color={colors.neutral[900]} />
+          </TouchableOpacity>
+          <Text style={styles.headerTitle}>Leave a Review</Text>
+          <View style={{ width: 44 }} />
+        </View>
+      </AnimatedEntrance>
 
       <KeyboardAvoidingView
         style={{ flex: 1 }}
@@ -64,70 +67,78 @@ export function ReviewCreateScreen() {
       >
         <ScrollView style={styles.content} keyboardShouldPersistTaps="handled">
           
-          <View style={styles.providerCard}>
-            <View style={styles.providerAvatar}>
-              <Text style={styles.providerAvatarText}>{providerName.charAt(0).toUpperCase()}</Text>
+          <AnimatedEntrance delay={60} direction="up">
+            <View style={styles.providerCard}>
+              <View style={styles.providerAvatar}>
+                <Text style={styles.providerAvatarText}>{providerName.charAt(0).toUpperCase()}</Text>
+              </View>
+              <Text style={styles.providerName}>{providerName}</Text>
+              <Text style={styles.serviceText}>For {booking.serviceType}</Text>
             </View>
-            <Text style={styles.providerName}>{providerName}</Text>
-            <Text style={styles.serviceText}>For {booking.serviceType}</Text>
-          </View>
+          </AnimatedEntrance>
 
-          <View style={styles.ratingSection}>
-            <Text style={styles.ratingTitle}>How was your experience?</Text>
-            <View style={styles.starsContainer}>
-              {[1, 2, 3, 4, 5].map((star) => (
-                <TouchableOpacity
-                  key={star}
-                  onPress={() => setRating(star)}
-                  style={styles.starButton}
-                >
-                  <Ionicons
-                    name={star <= rating ? "star" : "star-outline"}
-                    size={40}
-                    color={star <= rating ? colors.warning[500] : colors.neutral[300]}
-                  />
-                </TouchableOpacity>
-              ))}
+          <AnimatedEntrance delay={100} direction="up">
+            <View style={styles.ratingSection}>
+              <Text style={styles.ratingTitle}>How was your experience?</Text>
+              <View style={styles.starsContainer}>
+                {[1, 2, 3, 4, 5].map((star) => (
+                  <TouchableOpacity
+                    key={star}
+                    onPress={() => setRating(star)}
+                    style={styles.starButton}
+                  >
+                    <Ionicons
+                      name={star <= rating ? "star" : "star-outline"}
+                      size={40}
+                      color={star <= rating ? colors.warning[500] : colors.neutral[300]}
+                    />
+                  </TouchableOpacity>
+                ))}
+              </View>
+              <Text style={styles.ratingDescription}>
+                {rating === 0 && "Tap a star to rate"}
+                {rating === 1 && "Terrible"}
+                {rating === 2 && "Poor"}
+                {rating === 3 && "Fair"}
+                {rating === 4 && "Good"}
+                {rating === 5 && "Excellent"}
+              </Text>
             </View>
-            <Text style={styles.ratingDescription}>
-              {rating === 0 && "Tap a star to rate"}
-              {rating === 1 && "Terrible"}
-              {rating === 2 && "Poor"}
-              {rating === 3 && "Fair"}
-              {rating === 4 && "Good"}
-              {rating === 5 && "Excellent"}
-            </Text>
-          </View>
+          </AnimatedEntrance>
 
-          <View style={styles.inputSection}>
-            <Text style={styles.inputTitle}>Share your thoughts (Optional)</Text>
-            <TextInput
-              style={styles.inputArea}
-              placeholder="What did you like or dislike? How was the service?"
-              placeholderTextColor={colors.neutral[400]}
-              multiline
-              textAlignVertical="top"
-              value={review}
-              onChangeText={setReview}
-              maxLength={500}
-            />
-          </View>
+          <AnimatedEntrance delay={140} direction="up">
+            <View style={styles.inputSection}>
+              <Text style={styles.inputTitle}>Share your thoughts (Optional)</Text>
+              <TextInput
+                style={styles.inputArea}
+                placeholder="What did you like or dislike? How was the service?"
+                placeholderTextColor={colors.neutral[400]}
+                multiline
+                textAlignVertical="top"
+                value={review}
+                onChangeText={setReview}
+                maxLength={500}
+              />
+            </View>
+          </AnimatedEntrance>
 
         </ScrollView>
       </KeyboardAvoidingView>
 
-      <View style={styles.bottomBar}>
-        <TouchableOpacity
-          style={[
-            styles.submitButton,
-            rating === 0 && styles.submitButtonDisabled
-          ]}
-          onPress={handleSubmit}
-          disabled={rating === 0}
-        >
-          <Text style={styles.submitButtonText}>Submit Review</Text>
-        </TouchableOpacity>
-      </View>
+      <AnimatedEntrance delay={180} direction="up">
+        <View style={styles.bottomBar}>
+          <TouchableOpacity
+            style={[
+              styles.submitButton,
+              rating === 0 && styles.submitButtonDisabled
+            ]}
+            onPress={handleSubmit}
+            disabled={rating === 0}
+          >
+            <Text style={styles.submitButtonText}>Submit Review</Text>
+          </TouchableOpacity>
+        </View>
+      </AnimatedEntrance>
     </SafeAreaView>
   );
 }

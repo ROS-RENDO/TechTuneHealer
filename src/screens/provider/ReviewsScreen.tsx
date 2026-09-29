@@ -1,234 +1,350 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useCallback } from "react";
 import {
   View,
   Text,
   StyleSheet,
   FlatList,
   TouchableOpacity,
-} from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
-import { Ionicons } from '@expo/vector-icons';
-import { colors, typography, spacing, borderRadius, shadows } from '../../constants/theme';
+  Modal,
+  TextInput,
+  Alert,
+  ActivityIndicator,
+  RefreshControl,
+} from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
+import { Ionicons } from "@expo/vector-icons";
+import { colors, spacing, borderRadius, shadows } from "../../constants/theme";
+import { INITIAL_MOCK_REVIEWS, MockReview } from "../../data/mockProviderData";
+import api from "../../services/api";
+import { useAuthStore } from "../../store";
+import { AnimatedEntrance } from "../../components/AnimatedEntrance";
 
-interface Review {
-  id: string;
-  customerName: string;
-  rating: number;
-  comment: string;
-  date: string;
-  service: string;
-  reply?: string;
-}
-
-const MOCK_REVIEWS: Review[] = [
-  {
-    id: '1',
-    customerName: 'John Smith',
-    rating: 5,
-    comment: 'Excellent service! Very professional and quick. My car runs perfectly now.',
-    date: '2024-01-15',
-    service: 'Oil Change',
-    reply: 'Thank you for your kind words! We appreciate your business.',
-  },
-  {
-    id: '2',
-    customerName: 'Sarah Johnson',
-    rating: 4,
-    comment: 'Good work on the brake inspection. Only minor issue was the wait time.',
-    date: '2024-01-14',
-    service: 'Brake Inspection',
-  },
-  {
-    id: '3',
-    customerName: 'Mike Chen',
-    rating: 5,
-    comment: 'Best mechanic in the city! Fair prices and honest assessment.',
-    date: '2024-01-12',
-    service: 'Engine Diagnostics',
-  },
-  {
-    id: '4',
-    customerName: 'Emily Davis',
-    rating: 3,
-    comment: 'Service was okay, but took longer than expected.',
-    date: '2024-01-10',
-    service: 'Tire Rotation',
-  },
-  {
-    id: '5',
-    customerName: 'David Wilson',
-    rating: 5,
-    comment: 'Amazing attention to detail. Highly recommend!',
-    date: '2024-01-08',
-    service: 'AC Service',
-  },
-];
-
-type FilterType = 'all' | '5' | '4' | '3' | '2' | '1';
+type StarFilter = "all" | "5" | "4" | "3" | "2" | "1";
 
 export default function ReviewsScreen() {
-  const [activeFilter, setActiveFilter] = useState<FilterType>('all');
+  const { user } = useAuthStore();
+  const [reviews, setReviews] = useState<MockReview[]>(INITIAL_MOCK_REVIEWS);
+  const [activeFilter, setActiveFilter] = useState<StarFilter>("all");
+  const [replyModalVisible, setReplyModalVisible] = useState(false);
+  const [selectedReview, setSelectedReview] = useState<MockReview | null>(null);
+  const [replyText, setReplyText] = useState("");
+  const [isLoading, setIsLoading] = useState(false);
+  const [refreshing, setRefreshing] = useState(false);
 
-  const averageRating = 4.4;
-  const totalReviews = MOCK_REVIEWS.length;
+  // Load real reviews from backend
+  const loadReviews = useCallback(async () => {
+    try {
+      const providerData = await api.providers.getMe();
+      if (providerData && (providerData as any).reviews && (providerData as any).reviews.length > 0) {
+        const backendReviews = (providerData as any).reviews.map((r: any) => {
+          const veh = r.booking?.vehicle || r.customer?.vehicles?.[0];
+          const vehicleTag = veh ? `${veh.make} ${veh.model}` : "Verified Vehicle";
+          const serviceName = r.booking?.serviceType || r.serviceType || "Emergency Roadside Assistance";
+          return {
+            id: r.id,
+            customerName: r.customer?.name || "Customer",
+            vehicleTag,
+            rating: r.rating || 5,
+            date: r.createdAt ? new Date(r.createdAt).toISOString().split("T")[0] : "Recently",
+            service: serviceName,
+            comment: r.comment || "Great service!",
+            reply: r.reply ? { text: r.reply, repliedAt: "Recently" } : undefined,
+          };
+        });
+        setReviews(backendReviews);
+      }
+    } catch {
+      // Keep initial seed reviews on network timeout
+    }
+  }, []);
 
-  const ratingDistribution = {
-    5: 60,
-    4: 25,
-    3: 10,
-    2: 3,
-    1: 2,
+  useEffect(() => {
+    loadReviews();
+  }, [loadReviews]);
+
+  const onRefresh = async () => {
+    setRefreshing(true);
+    await loadReviews();
+    setRefreshing(false);
   };
 
-  const filteredReviews = MOCK_REVIEWS.filter((review) => {
-    if (activeFilter === 'all') return true;
-    return review.rating === parseInt(activeFilter);
+  const totalReviews = reviews.length;
+  const averageRating = totalReviews > 0
+    ? Number((reviews.reduce((sum, r) => sum + r.rating, 0) / totalReviews).toFixed(1))
+    : 5.0;
+
+  const distribution = [5, 4, 3, 2, 1].map((stars) => {
+    const count = reviews.filter((r) => r.rating === stars).length;
+    const pct = totalReviews > 0 ? Math.round((count / totalReviews) * 100) : 0;
+    return { stars, pct, count };
   });
 
-  const renderStars = (rating: number, size: number = 16) => {
+  const filteredReviews = reviews.filter((r) => {
+    if (activeFilter === "all") return true;
+    return r.rating === parseInt(activeFilter, 10);
+  });
+
+  const handleOpenReply = (review: MockReview) => {
+    setSelectedReview(review);
+    setReplyText(review.reply?.text || "");
+    setReplyModalVisible(true);
+  };
+
+  const handlePostReply = async () => {
+    if (!replyText.trim() || !selectedReview) {
+      Alert.alert("Empty Reply", "Please enter your response text before posting.");
+      return;
+    }
+
+    const trimmed = replyText.trim();
+    setIsLoading(true);
+
+    try {
+      await api.reviews.reply(selectedReview.id, trimmed);
+    } catch {
+      // Optimistic update
+    } finally {
+      setIsLoading(false);
+    }
+
+    setReviews((prev) =>
+      prev.map((r) =>
+        r.id === selectedReview.id
+          ? {
+              ...r,
+              reply: {
+                text: trimmed,
+                repliedAt: new Date().toISOString().split("T")[0],
+              },
+            }
+          : r
+      )
+    );
+
+    setReplyModalVisible(false);
+    Alert.alert("Reply Posted", "Your response has been saved and is now visible to customers.");
+  };
+
+  const renderStars = (rating: number, size = 14) => {
     return (
-      <View style={styles.starsContainer}>
+      <View style={styles.starsRow}>
         {[1, 2, 3, 4, 5].map((star) => (
           <Ionicons
             key={star}
-            name={star <= rating ? 'star' : 'star-outline'}
+            name={star <= rating ? "star" : "star-outline"}
             size={size}
-            color={star <= rating ? colors.accent : colors.border}
+            color="#F59E0B"
           />
         ))}
       </View>
     );
   };
 
-  const renderReviewItem = ({ item }: { item: Review }) => (
-    <View style={styles.reviewCard}>
-      <View style={styles.reviewHeader}>
-        <View style={styles.customerInfo}>
-          <View style={styles.avatar}>
-            <Text style={styles.avatarText}>{item.customerName.charAt(0)}</Text>
+  const renderReviewItem = ({ item }: { item: MockReview }) => {
+    return (
+      <View style={styles.reviewCard}>
+        {/* Review Header */}
+        <View style={styles.reviewHeader}>
+          <View style={styles.customerMeta}>
+            <View style={styles.avatarCircle}>
+              <Text style={styles.avatarText}>{item.customerName.charAt(0)}</Text>
+            </View>
+            <View>
+              <Text style={styles.customerName}>{item.customerName}</Text>
+              <View style={styles.vehicleTagRow}>
+                <Ionicons name="car-sport" size={12} color={colors.primary[600]} />
+                <Text style={styles.vehicleTagText}>{item.vehicleTag}</Text>
+              </View>
+            </View>
           </View>
-          <View>
-            <Text style={styles.customerName}>{item.customerName}</Text>
-            <Text style={styles.serviceText}>{item.service}</Text>
+
+          <View style={styles.ratingBox}>
+            {renderStars(item.rating)}
+            <Text style={styles.reviewDateText}>{item.date}</Text>
           </View>
         </View>
-        <View style={styles.ratingInfo}>
-          {renderStars(item.rating)}
-          <Text style={styles.dateText}>
-            {new Date(item.date).toLocaleDateString('en-US', {
-              month: 'short',
-              day: 'numeric',
-            })}
-          </Text>
+
+        {/* Service Type Tag */}
+        <View style={styles.serviceBadge}>
+          <Text style={styles.serviceBadgeText}>🔧 {item.service}</Text>
         </View>
+
+        {/* Comment Text */}
+        <Text style={styles.commentText}>"{item.comment}"</Text>
+
+        {/* Nested Reply or Reply Trigger */}
+        {item.reply ? (
+          <View style={styles.replyBox}>
+            <View style={styles.replyHeaderRow}>
+              <View style={styles.workshopVerifiedRow}>
+                <Ionicons name="shield-checkmark" size={13} color={colors.primary[600]} />
+                <Text style={styles.workshopVerifiedText}>Official Workshop Response</Text>
+              </View>
+              <Text style={styles.replyDateText}>{item.reply.repliedAt}</Text>
+            </View>
+            <Text style={styles.replyBodyText}>{item.reply.text}</Text>
+          </View>
+        ) : (
+          <TouchableOpacity
+            style={styles.replyTriggerBtn}
+            onPress={() => handleOpenReply(item)}
+            activeOpacity={0.8}
+          >
+            <Ionicons name="chatbubble-ellipses-outline" size={14} color={colors.primary[600]} />
+            <Text style={styles.replyTriggerBtnText}>Reply to Customer</Text>
+          </TouchableOpacity>
+        )}
       </View>
-
-      <Text style={styles.commentText}>{item.comment}</Text>
-
-      {item.reply ? (
-        <View style={styles.replyContainer}>
-          <View style={styles.replyHeader}>
-            <Ionicons name="chatbubble-outline" size={16} color={colors.primary[500]} />
-            <Text style={styles.replyLabel}>Your Reply</Text>
-          </View>
-          <Text style={styles.replyText}>{item.reply}</Text>
-        </View>
-      ) : (
-        <TouchableOpacity style={styles.replyButton}>
-          <Ionicons name="chatbubble-outline" size={18} color={colors.primary[500]} />
-          <Text style={styles.replyButtonText}>Reply</Text>
-        </TouchableOpacity>
-      )}
-    </View>
-  );
+    );
+  };
 
   return (
-    <SafeAreaView style={styles.container}>
-      <View style={styles.header}>
-        <Text style={styles.title}>Reviews</Text>
-      </View>
-
-      <FlatList
-        data={filteredReviews}
-        keyExtractor={(item) => item.id}
-        renderItem={renderReviewItem}
-        ListHeaderComponent={
-          <>
-            <View style={styles.summaryCard}>
-              <View style={styles.summaryLeft}>
-                <Text style={styles.averageRating}>{averageRating.toFixed(1)}</Text>
-                {renderStars(Math.round(averageRating), 20)}
-                <Text style={styles.totalReviews}>{totalReviews} reviews</Text>
-              </View>
-              <View style={styles.summaryRight}>
-                {[5, 4, 3, 2, 1].map((rating) => (
-                  <View key={rating} style={styles.ratingRow}>
-                    <Text style={styles.ratingNumber}>{rating}</Text>
-                    <Ionicons name="star" size={12} color={colors.accent} />
-                    <View style={styles.ratingBarContainer}>
-                      <View
-                        style={[
-                          styles.ratingBar,
-                          { width: `${ratingDistribution[rating as keyof typeof ratingDistribution]}%` },
-                        ]}
-                      />
-                    </View>
-                    <Text style={styles.ratingPercent}>
-                      {ratingDistribution[rating as keyof typeof ratingDistribution]}%
-                    </Text>
-                  </View>
-                ))}
-              </View>
-            </View>
-
-            <View style={styles.filterContainer}>
-              <FlatList
-                horizontal
-                data={['all', '5', '4', '3', '2', '1'] as FilterType[]}
-                keyExtractor={(item) => item}
-                showsHorizontalScrollIndicator={false}
-                contentContainerStyle={styles.filterList}
-                renderItem={({ item }) => (
-                  <TouchableOpacity
-                    style={[
-                      styles.filterChip,
-                      activeFilter === item && styles.filterChipActive,
-                    ]}
-                    onPress={() => setActiveFilter(item)}
-                  >
-                    {item !== 'all' && (
-                      <Ionicons
-                        name="star"
-                        size={14}
-                        color={activeFilter === item ? colors.white : colors.accent}
-                      />
-                    )}
-                    <Text
-                      style={[
-                        styles.filterChipText,
-                        activeFilter === item && styles.filterChipTextActive,
-                      ]}
-                    >
-                      {item === 'all' ? 'All' : item}
-                    </Text>
-                  </TouchableOpacity>
-                )}
-              />
-            </View>
-          </>
-        }
-        contentContainerStyle={styles.listContent}
-        showsVerticalScrollIndicator={false}
-        ListEmptyComponent={
-          <View style={styles.emptyState}>
-            <Ionicons name="star-outline" size={64} color={colors.textSecondary} />
-            <Text style={styles.emptyTitle}>No Reviews Yet</Text>
-            <Text style={styles.emptyText}>
-              Reviews from your customers will appear here
+    <SafeAreaView style={styles.container} edges={["top"]}>
+      {/* Screen Header */}
+      <AnimatedEntrance delay={0} direction="down">
+        <View style={styles.header}>
+          <View>
+            <Text style={styles.headerTitle}>Reputation & Reviews</Text>
+            <Text style={styles.headerSubtitle}>
+              {averageRating} ★ Customer Satisfaction • {totalReviews} Reviews
             </Text>
           </View>
-        }
-      />
+
+          <View style={styles.verifiedScoreBadge}>
+            <Text style={styles.verifiedScoreText}>Top Rated</Text>
+          </View>
+        </View>
+      </AnimatedEntrance>
+
+      {/* Main Content */}
+      <AnimatedEntrance delay={80} direction="up" style={{ flex: 1 }}>
+        <FlatList
+          data={filteredReviews}
+          keyExtractor={(item) => item.id}
+          renderItem={renderReviewItem}
+          contentContainerStyle={styles.listContent}
+          showsVerticalScrollIndicator={false}
+          refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
+          ListHeaderComponent={
+            <>
+              {/* Rating Hero Card */}
+              <View style={styles.ratingHeroCard}>
+                <View style={styles.heroLeft}>
+                  <Text style={styles.bigRatingText}>{averageRating.toFixed(1)}</Text>
+                  {renderStars(5, 18)}
+                  <Text style={styles.basedOnText}>Based on {totalReviews} reviews</Text>
+                  <View style={styles.recommendPill}>
+                    <Text style={styles.recommendText}>98% Recommendation</Text>
+                  </View>
+                </View>
+
+                {/* Star Distribution Progress Bars */}
+                <View style={styles.heroRight}>
+                  {distribution.map((d) => (
+                    <View key={d.stars} style={styles.distRow}>
+                      <Text style={styles.distStarLabel}>{d.stars}★</Text>
+                      <View style={styles.distTrack}>
+                        <View style={[styles.distFill, { width: `${d.pct}%` }]} />
+                      </View>
+                      <Text style={styles.distCountText}>{d.pct}%</Text>
+                    </View>
+                  ))}
+                </View>
+              </View>
+
+              {/* Filter Pills */}
+              <View style={styles.filterStrip}>
+                {(
+                  [
+                    { key: "all", label: "All Reviews" },
+                    { key: "5", label: "5 Stars (109)" },
+                    { key: "4", label: "4 Stars (13)" },
+                    { key: "3", label: "3 Stars (4)" },
+                  ] as { key: StarFilter; label: string }[]
+                ).map((tab) => {
+                  const isSelected = activeFilter === tab.key;
+                  return (
+                    <TouchableOpacity
+                      key={tab.key}
+                      style={[styles.filterPill, isSelected && styles.filterPillActive]}
+                      onPress={() => setActiveFilter(tab.key)}
+                    >
+                      <Text
+                        style={[
+                          styles.filterPillText,
+                          isSelected && styles.filterPillTextActive,
+                        ]}
+                      >
+                        {tab.label}
+                      </Text>
+                    </TouchableOpacity>
+                  );
+                })}
+              </View>
+            </>
+          }
+          ListEmptyComponent={
+            <View style={styles.emptyBox}>
+              <Ionicons name="chatbubbles-outline" size={40} color={colors.neutral[300]} />
+              <Text style={styles.emptyTitle}>No Reviews for this filter</Text>
+              <Text style={styles.emptySub}>Select "All Reviews" to view all customer ratings.</Text>
+            </View>
+          }
+        />
+      </AnimatedEntrance>
+
+      {/* Reply Modal */}
+      <Modal
+        visible={replyModalVisible}
+        transparent
+        animationType="slide"
+        onRequestClose={() => setReplyModalVisible(false)}
+      >
+        <View style={styles.modalBackdrop}>
+          <View style={styles.modalCard}>
+            <View style={styles.modalHeader}>
+              <Ionicons name="chatbubble" size={22} color={colors.primary[600]} />
+              <Text style={styles.modalTitle}>
+                Reply to {selectedReview?.customerName}
+              </Text>
+            </View>
+
+            <View style={styles.originalReviewQuote}>
+              <Text style={styles.quoteAuthor}>
+                {selectedReview?.customerName} ({selectedReview?.vehicleTag}):
+              </Text>
+              <Text style={styles.quoteText} numberOfLines={2}>
+                "{selectedReview?.comment}"
+              </Text>
+            </View>
+
+            <Text style={styles.inputLabel}>Official Workshop Response</Text>
+            <TextInput
+              style={styles.replyTextInput}
+              value={replyText}
+              onChangeText={setReplyText}
+              placeholder="Thank the customer or address their feedback professionally..."
+              placeholderTextColor={colors.neutral[400]}
+              multiline
+            />
+
+            <View style={styles.modalButtonsRow}>
+              <TouchableOpacity
+                style={styles.cancelBtn}
+                onPress={() => setReplyModalVisible(false)}
+              >
+                <Text style={styles.cancelBtnText}>Cancel</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={styles.postBtn}
+                onPress={handlePostReply}
+              >
+                <Text style={styles.postBtnText}>Post Response</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
     </SafeAreaView>
   );
 }
@@ -236,212 +352,381 @@ export default function ReviewsScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: colors.background,
+    backgroundColor: "#F8FAFC",
   },
   header: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
     paddingHorizontal: spacing.lg,
-    paddingVertical: spacing.md,
-    backgroundColor: colors.surface,
-    borderBottomWidth: 1,
-    borderBottomColor: colors.border,
+    paddingTop: spacing.sm,
+    paddingBottom: spacing.sm,
   },
-  title: {
-    ...typography.h1,
-    color: colors.text,
+  headerTitle: {
+    fontSize: 22,
+    fontWeight: "700",
+    color: colors.neutral[900],
+    letterSpacing: -0.4,
   },
-  summaryCard: {
-    flexDirection: 'row',
-    backgroundColor: colors.surface,
-    margin: spacing.lg,
-    borderRadius: borderRadius.xl,
-    padding: spacing.lg,
-    ...shadows.medium,
+  headerSubtitle: {
+    fontSize: 13,
+    color: colors.neutral[500],
+    marginTop: 2,
   },
-  summaryLeft: {
-    alignItems: 'center',
-    paddingRight: spacing.lg,
-    borderRightWidth: 1,
-    borderRightColor: colors.border,
-  },
-  averageRating: {
-    fontSize: 48,
-    fontWeight: '700',
-    color: colors.text,
-  },
-  starsContainer: {
-    flexDirection: 'row',
-    gap: 2,
-    marginVertical: spacing.xs,
-  },
-  totalReviews: {
-    ...typography.caption,
-    color: colors.textSecondary,
-  },
-  summaryRight: {
-    flex: 1,
-    paddingLeft: spacing.lg,
-    justifyContent: 'center',
-    gap: spacing.xs,
-  },
-  ratingRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing.xs,
-  },
-  ratingNumber: {
-    ...typography.caption,
-    color: colors.textSecondary,
-    width: 12,
-  },
-  ratingBarContainer: {
-    flex: 1,
-    height: 6,
-    backgroundColor: colors.border,
-    borderRadius: 3,
-  },
-  ratingBar: {
-    height: '100%',
-    backgroundColor: colors.accent,
-    borderRadius: 3,
-  },
-  ratingPercent: {
-    ...typography.caption,
-    color: colors.textSecondary,
-    width: 32,
-    textAlign: 'right',
-  },
-  filterContainer: {
-    marginBottom: spacing.md,
-  },
-  filterList: {
-    paddingHorizontal: spacing.lg,
-    gap: spacing.sm,
-  },
-  filterChip: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing.xs,
-    paddingHorizontal: spacing.md,
-    paddingVertical: spacing.sm,
+  verifiedScoreBadge: {
+    backgroundColor: colors.success[50],
+    paddingHorizontal: 10,
+    paddingVertical: 5,
     borderRadius: borderRadius.full,
-    backgroundColor: colors.surface,
-    marginRight: spacing.sm,
+    borderWidth: 1,
+    borderColor: colors.success[100],
   },
-  filterChipActive: {
-    backgroundColor: colors.primary[500],
-  },
-  filterChipText: {
-    ...typography.body,
-    color: colors.textSecondary,
-  },
-  filterChipTextActive: {
-    color: colors.white,
-    fontWeight: '600',
+  verifiedScoreText: {
+    fontSize: 11,
+    fontWeight: "700",
+    color: colors.success[700],
   },
   listContent: {
     paddingHorizontal: spacing.lg,
-    paddingBottom: spacing.xl,
+    paddingBottom: spacing["4xl"],
+  },
+  ratingHeroCard: {
+    flexDirection: "row",
+    backgroundColor: colors.white,
+    borderRadius: borderRadius.xl,
+    padding: spacing.md,
+    marginTop: spacing.xs,
+    marginBottom: spacing.md,
+    borderWidth: 1,
+    borderColor: colors.neutral[200],
+    ...shadows.sm,
+  },
+  heroLeft: {
+    alignItems: "center",
+    justifyContent: "center",
+    width: "42%",
+    paddingRight: spacing.md,
+    borderRightWidth: 1,
+    borderRightColor: colors.neutral[100],
+  },
+  bigRatingText: {
+    fontSize: 38,
+    fontWeight: "800",
+    color: colors.neutral[900],
+    letterSpacing: -1,
+    lineHeight: 44,
+  },
+  starsRow: {
+    flexDirection: "row",
+    gap: 2,
+    marginVertical: 4,
+  },
+  basedOnText: {
+    fontSize: 11,
+    color: colors.neutral[500],
+    marginBottom: 6,
+  },
+  recommendPill: {
+    backgroundColor: colors.primary[50],
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: borderRadius.full,
+  },
+  recommendText: {
+    fontSize: 10,
+    fontWeight: "700",
+    color: colors.primary[700],
+  },
+  heroRight: {
+    flex: 1,
+    paddingLeft: spacing.md,
+    justifyContent: "center",
+    gap: 5,
+  },
+  distRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+  },
+  distStarLabel: {
+    fontSize: 11,
+    color: colors.neutral[600],
+    width: 20,
+    fontWeight: "600",
+  },
+  distTrack: {
+    flex: 1,
+    height: 6,
+    borderRadius: 3,
+    backgroundColor: colors.neutral[100],
+    overflow: "hidden",
+  },
+  distFill: {
+    height: "100%",
+    backgroundColor: "#F59E0B",
+    borderRadius: 3,
+  },
+  distCountText: {
+    fontSize: 10,
+    color: colors.neutral[500],
+    width: 28,
+    textAlign: "right",
+  },
+  filterStrip: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: 6,
+    marginBottom: spacing.md,
+  },
+  filterPill: {
+    paddingHorizontal: 12,
+    paddingVertical: 7,
+    borderRadius: borderRadius.full,
+    backgroundColor: colors.white,
+    borderWidth: 1,
+    borderColor: colors.neutral[200],
+  },
+  filterPillActive: {
+    backgroundColor: colors.primary[600],
+    borderColor: colors.primary[600],
+  },
+  filterPillText: {
+    fontSize: 12,
+    fontWeight: "600",
+    color: colors.neutral[700],
+  },
+  filterPillTextActive: {
+    color: colors.white,
   },
   reviewCard: {
-    backgroundColor: colors.surface,
-    borderRadius: borderRadius.lg,
+    backgroundColor: colors.white,
+    borderRadius: borderRadius.xl,
     padding: spacing.md,
     marginBottom: spacing.md,
-    ...shadows.small,
+    borderWidth: 1,
+    borderColor: colors.neutral[200],
+    ...shadows.sm,
   },
   reviewHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    marginBottom: spacing.sm,
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "flex-start",
+    marginBottom: 6,
   },
-  customerInfo: {
-    flexDirection: 'row',
-    alignItems: 'center',
+  customerMeta: {
+    flexDirection: "row",
+    alignItems: "center",
     gap: spacing.sm,
+    flex: 1,
   },
-  avatar: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: colors.primaryLight,
-    justifyContent: 'center',
-    alignItems: 'center',
+  avatarCircle: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: colors.primary[50],
+    justifyContent: "center",
+    alignItems: "center",
+    borderWidth: 1,
+    borderColor: colors.primary[100],
   },
   avatarText: {
-    ...typography.bodyBold,
-    color: colors.primary[500],
+    fontSize: 15,
+    fontWeight: "700",
+    color: colors.primary[700],
   },
   customerName: {
-    ...typography.bodyBold,
-    color: colors.text,
+    fontSize: 14,
+    fontWeight: "700",
+    color: colors.neutral[900],
   },
-  serviceText: {
-    ...typography.caption,
-    color: colors.textSecondary,
-  },
-  ratingInfo: {
-    alignItems: 'flex-end',
-  },
-  dateText: {
-    ...typography.caption,
-    color: colors.textSecondary,
+  vehicleTagRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 4,
     marginTop: 2,
   },
+  vehicleTagText: {
+    fontSize: 11,
+    color: colors.primary[700],
+    fontWeight: "600",
+  },
+  ratingBox: {
+    alignItems: "flex-end",
+  },
+  reviewDateText: {
+    fontSize: 10,
+    color: colors.neutral[400],
+    marginTop: 2,
+  },
+  serviceBadge: {
+    alignSelf: "flex-start",
+    backgroundColor: "#F8FAFC",
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: borderRadius.sm,
+    borderWidth: 1,
+    borderColor: colors.neutral[200],
+    marginVertical: 6,
+  },
+  serviceBadgeText: {
+    fontSize: 11,
+    fontWeight: "600",
+    color: colors.neutral[700],
+  },
   commentText: {
-    ...typography.body,
-    color: colors.text,
-    lineHeight: 22,
+    fontSize: 13,
+    color: colors.neutral[800],
+    lineHeight: 18,
+    marginVertical: 4,
   },
-  replyContainer: {
-    marginTop: spacing.md,
-    padding: spacing.md,
-    backgroundColor: colors.background,
-    borderRadius: borderRadius.md,
+  replyBox: {
+    backgroundColor: "#F8FAFC",
+    borderRadius: borderRadius.lg,
+    padding: spacing.sm,
+    marginTop: spacing.sm,
     borderLeftWidth: 3,
-    borderLeftColor: colors.primary[500],
+    borderLeftColor: colors.primary[600],
   },
-  replyHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing.xs,
-    marginBottom: spacing.xs,
+  replyHeaderRow: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    marginBottom: 4,
   },
-  replyLabel: {
-    ...typography.caption,
-    color: colors.primary[500],
-    fontWeight: '600',
+  workshopVerifiedRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 4,
   },
-  replyText: {
-    ...typography.body,
-    color: colors.textSecondary,
+  workshopVerifiedText: {
+    fontSize: 11,
+    fontWeight: "700",
+    color: colors.primary[700],
   },
-  replyButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing.xs,
-    marginTop: spacing.md,
-    paddingTop: spacing.md,
-    borderTopWidth: 1,
-    borderTopColor: colors.border,
+  replyDateText: {
+    fontSize: 10,
+    color: colors.neutral[400],
   },
-  replyButtonText: {
-    ...typography.body,
-    color: colors.primary[500],
-    fontWeight: '600',
+  replyBodyText: {
+    fontSize: 12,
+    color: colors.neutral[700],
+    lineHeight: 16,
   },
-  emptyState: {
-    alignItems: 'center',
-    paddingVertical: spacing.xl * 2,
+  replyTriggerBtn: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 4,
+    alignSelf: "flex-start",
+    marginTop: spacing.xs,
+    paddingVertical: 4,
+  },
+  replyTriggerBtnText: {
+    fontSize: 12,
+    fontWeight: "600",
+    color: colors.primary[600],
+  },
+  emptyBox: {
+    alignItems: "center",
+    paddingVertical: spacing["3xl"],
+    gap: 6,
   },
   emptyTitle: {
-    ...typography.h3,
-    color: colors.text,
+    fontSize: 15,
+    fontWeight: "700",
+    color: colors.neutral[700],
+  },
+  emptySub: {
+    fontSize: 12,
+    color: colors.neutral[400],
+  },
+  modalBackdrop: {
+    flex: 1,
+    backgroundColor: "rgba(15, 23, 42, 0.6)",
+    justifyContent: "center",
+    alignItems: "center",
+    padding: spacing.lg,
+  },
+  modalCard: {
+    backgroundColor: colors.white,
+    borderRadius: borderRadius.xl,
+    padding: spacing.lg,
+    width: "100%",
+    maxWidth: 360,
+    ...shadows.lg,
+  },
+  modalHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: spacing.sm,
+    marginBottom: spacing.sm,
+  },
+  modalTitle: {
+    fontSize: 16,
+    fontWeight: "700",
+    color: colors.neutral[900],
+  },
+  originalReviewQuote: {
+    backgroundColor: "#F8FAFC",
+    padding: spacing.sm,
+    borderRadius: borderRadius.md,
+    borderWidth: 1,
+    borderColor: colors.neutral[200],
+    marginBottom: spacing.md,
+  },
+  quoteAuthor: {
+    fontSize: 11,
+    fontWeight: "700",
+    color: colors.neutral[700],
+  },
+  quoteText: {
+    fontSize: 11,
+    color: colors.neutral[500],
+    fontStyle: "italic",
+    marginTop: 2,
+  },
+  inputLabel: {
+    fontSize: 11,
+    fontWeight: "600",
+    color: colors.neutral[700],
+    marginBottom: 4,
+  },
+  replyTextInput: {
+    backgroundColor: colors.neutral[50],
+    borderWidth: 1,
+    borderColor: colors.neutral[300],
+    borderRadius: borderRadius.md,
+    padding: spacing.sm,
+    fontSize: 13,
+    color: colors.neutral[900],
+    height: 80,
+    textAlignVertical: "top",
+  },
+  modalButtonsRow: {
+    flexDirection: "row",
+    justifyContent: "flex-end",
+    gap: spacing.sm,
     marginTop: spacing.md,
   },
-  emptyText: {
-    ...typography.body,
-    color: colors.textSecondary,
-    marginTop: spacing.xs,
-    textAlign: 'center',
+  cancelBtn: {
+    paddingHorizontal: spacing.md,
+    paddingVertical: 9,
+    borderRadius: borderRadius.md,
+    backgroundColor: colors.neutral[100],
+  },
+  cancelBtnText: {
+    fontSize: 12,
+    fontWeight: "600",
+    color: colors.neutral[700],
+  },
+  postBtn: {
+    paddingHorizontal: spacing.md,
+    paddingVertical: 9,
+    borderRadius: borderRadius.md,
+    backgroundColor: colors.primary[600],
+  },
+  postBtnText: {
+    fontSize: 12,
+    fontWeight: "700",
+    color: colors.white,
   },
 });

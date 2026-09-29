@@ -12,6 +12,8 @@ import { useNavigation } from "@react-navigation/native";
 import { Ionicons } from "@expo/vector-icons";
 import { Input } from "../../components/Input";
 import { Button } from "../../components/Button";
+import { AnimatedEntrance } from "../../components";
+import { useVehicleStore } from "../../store/vehicleStore";
 import {
   colors,
   spacing,
@@ -22,29 +24,94 @@ import {
 } from "../../constants/theme";
 import type { CustomerStackScreenProps } from "../../navigation/types";
 
-const YEARS = Array.from({ length: 30 }, (_, i) => 2025 - i);
+const YEARS = Array.from({ length: 30 }, (_, i) => 2026 - i);
 
 const MAKES = [
   "Toyota",
-  "Honda",
+  "Lexus",
+  "Tesla",
   "Ford",
-  "Chevrolet",
+  "Honda",
   "BMW",
   "Mercedes-Benz",
   "Audi",
-  "Volkswagen",
   "Hyundai",
   "Kia",
   "Nissan",
   "Mazda",
+  "Chevrolet",
+  "Volkswagen",
   "Subaru",
-  "Lexus",
   "Other",
+];
+
+const QUICK_PRESETS = [
+  {
+    name: "Lexus RX350",
+    make: "Lexus",
+    model: "RX350 Luxury AWD",
+    year: "2024",
+    licensePlate: "2A-8888",
+    color: "Sonic Titanium",
+    vin: "JTJBB31U872019482",
+    badge: "Popular SUV",
+  },
+  {
+    name: "Land Cruiser 300",
+    make: "Toyota",
+    model: "Land Cruiser 300 V6",
+    year: "2024",
+    licensePlate: "2C-9999",
+    color: "Pearl White",
+    vin: "JTMHY7AJ3M4019284",
+    badge: "Off-Road 4x4",
+  },
+  {
+    name: "Tesla Model Y",
+    make: "Tesla",
+    model: "Model Y Dual Motor AWD",
+    year: "2024",
+    licensePlate: "2E-7777",
+    color: "Deep Blue Metallic",
+    vin: "7SAYGDEE1PF829104",
+    badge: "Electric EV",
+  },
+  {
+    name: "Ford Ranger Raptor",
+    make: "Ford",
+    model: "Ranger Raptor 4x4",
+    year: "2023",
+    licensePlate: "2D-5555",
+    color: "Code Orange",
+    vin: "1FTER4EH2MLA81923",
+    badge: "Performance Pickup",
+  },
+  {
+    name: "Toyota Camry",
+    make: "Toyota",
+    model: "Camry Hybrid",
+    year: "2023",
+    licensePlate: "2B-1234",
+    color: "Attitude Black",
+    vin: "4T1B11HK5PU928172",
+    badge: "Executive Sedan",
+  },
+  {
+    name: "Maybach S680",
+    make: "Mercedes-Benz",
+    model: "Maybach S680 V12",
+    year: "2024",
+    licensePlate: "2X-1111",
+    color: "Obsidian Black",
+    vin: "WDD2231761A091823",
+    badge: "Ultra Luxury",
+  },
 ];
 
 export function VehicleAddScreen() {
   const navigation =
     useNavigation<CustomerStackScreenProps<"VehicleAdd">["navigation"]>();
+  const { addVehicle } = useVehicleStore();
 
   const [formData, setFormData] = useState({
     make: "",
@@ -66,6 +133,18 @@ export function VehicleAddScreen() {
     }
   };
 
+  const applyPreset = (preset: (typeof QUICK_PRESETS)[0]) => {
+    setFormData({
+      make: preset.make,
+      model: preset.model,
+      year: preset.year,
+      licensePlate: preset.licensePlate,
+      color: preset.color,
+      vin: preset.vin,
+    });
+    setErrors({});
+  };
+
   const validate = () => {
     const newErrors: Record<string, string> = {};
 
@@ -84,12 +163,26 @@ export function VehicleAddScreen() {
 
     setIsLoading(true);
     try {
-      // TODO: Implement API call to save vehicle
-      await new Promise((resolve) => setTimeout(resolve, 1000));
+      await addVehicle({
+        make: formData.make.trim(),
+        model: formData.model.trim(),
+        year: Number(formData.year),
+        plateNumber: formData.licensePlate.trim().toUpperCase(),
+        licensePlate: formData.licensePlate.trim().toUpperCase(),
+        color: formData.color.trim() || "Black",
+        vin: formData.vin?.trim() || undefined,
+      });
 
-      Alert.alert("Success", "Vehicle added successfully!", [
-        { text: "OK", onPress: () => navigation.goBack() },
-      ]);
+      Alert.alert(
+        "Vehicle Added",
+        `${formData.year} ${formData.make} ${formData.model} was successfully registered to your garage!`,
+        [
+          {
+            text: "View My Vehicles",
+            onPress: () => navigation.goBack(),
+          },
+        ]
+      );
     } catch {
       Alert.alert("Error", "Failed to add vehicle. Please try again.");
     } finally {
@@ -105,11 +198,51 @@ export function VehicleAddScreen() {
         showsVerticalScrollIndicator={false}
         keyboardShouldPersistTaps="handled"
       >
+        {/* Quick Presets Section */}
+        <AnimatedEntrance delay={0} direction="down">
+          <View style={styles.presetSection}>
+            <View style={styles.presetHeader}>
+              <Ionicons name="flash" size={16} color="#2563EB" />
+              <Text style={styles.presetHeaderText}>1-TAP POPULAR VEHICLE PRESETS</Text>
+            </View>
+            <ScrollView
+              horizontal
+              showsHorizontalScrollIndicator={false}
+              contentContainerStyle={styles.presetScroll}
+            >
+              {QUICK_PRESETS.map((preset) => {
+                const isSelected =
+                  formData.make === preset.make && formData.model === preset.model;
+                return (
+                  <TouchableOpacity
+                    key={preset.name}
+                    style={[
+                      styles.presetCard,
+                      isSelected && styles.presetCardSelected,
+                    ]}
+                    onPress={() => applyPreset(preset)}
+                    activeOpacity={0.75}
+                  >
+                    <View style={styles.presetBadge}>
+                      <Text style={styles.presetBadgeText}>{preset.badge}</Text>
+                    </View>
+                    <Text style={styles.presetName}>{preset.name}</Text>
+                    <Text style={styles.presetPlate}>🇰🇭 {preset.licensePlate}</Text>
+                  </TouchableOpacity>
+                );
+              })}
+            </ScrollView>
+          </View>
+        </AnimatedEntrance>
+
         {/* Vehicle Icon */}
         <View style={styles.iconContainer}>
           <View style={styles.vehicleIcon}>
-            <Ionicons name="car-sport" size={48} color={colors.primary[600]} />
+            <Ionicons name="car-sport" size={38} color={colors.primary[600]} />
           </View>
+          <Text style={styles.formSectionTitle}>
+            {formData.make ? `${formData.year || "2024"} ${formData.make} ${formData.model}` : "Custom Vehicle Registration"}
+          </Text>
         </View>
 
         {/* Form */}
@@ -174,7 +307,7 @@ export function VehicleAddScreen() {
           {/* Model */}
           <Input
             label="Model *"
-            placeholder="Enter model (e.g., Camry)"
+            placeholder="e.g., RX350, Land Cruiser, Model Y"
             value={formData.model}
             onChangeText={(value) => updateField("model", value)}
             error={errors.model}
@@ -240,32 +373,29 @@ export function VehicleAddScreen() {
 
           {/* License Plate */}
           <Input
-            label="License Plate *"
-            placeholder="Enter license plate"
+            label="Cambodian License Plate *"
+            placeholder="e.g., 2A-8888 or 2BC-1234"
             value={formData.licensePlate}
-            onChangeText={(value) =>
-              updateField("licensePlate", value.toUpperCase())
-            }
-            autoCapitalize="characters"
+            onChangeText={(value) => updateField("licensePlate", value.toUpperCase())}
             error={errors.licensePlate}
+            autoCapitalize="characters"
           />
 
           {/* Color */}
           <Input
             label="Color"
-            placeholder="Enter color (optional)"
+            placeholder="e.g., Sonic Titanium, White, Black"
             value={formData.color}
             onChangeText={(value) => updateField("color", value)}
           />
 
           {/* VIN */}
           <Input
-            label="VIN Number"
-            placeholder="Enter VIN (optional)"
+            label="VIN (Optional)"
+            placeholder="e.g., JTJBB31U872019482"
             value={formData.vin}
-            onChangeText={(value) => updateField("vin", value.toUpperCase())}
+            onChangeText={(value) => updateField("vin", value)}
             autoCapitalize="characters"
-            maxLength={17}
           />
           <Text style={styles.helpText}>
             17-character Vehicle Identification Number
@@ -273,16 +403,16 @@ export function VehicleAddScreen() {
         </View>
       </ScrollView>
 
-      {/* Bottom Actions */}
-      <View style={styles.bottomActions}>
-        <Button
-          title="Add Vehicle"
-          onPress={handleSave}
-          variant="primary"
-          size="large"
-          loading={isLoading}
-        />
-      </View>
+      {/* Bottom Button */}
+      <AnimatedEntrance delay={140} direction="up">
+        <View style={styles.bottomActions}>
+          <Button
+            title={isLoading ? "Saving Vehicle…" : "Save Vehicle to Garage"}
+            onPress={handleSave}
+            loading={isLoading}
+          />
+        </View>
+      </AnimatedEntrance>
     </SafeAreaView>
   );
 }
@@ -296,22 +426,85 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   contentContainer: {
-    padding: spacing.xl,
+    padding: spacing.lg,
+    paddingBottom: spacing.xl,
+  },
+  presetSection: {
+    marginBottom: spacing.md,
+  },
+  presetHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+    marginBottom: 8,
+  },
+  presetHeaderText: {
+    fontSize: 11,
+    fontWeight: "800",
+    color: "#2563EB",
+    letterSpacing: 0.8,
+  },
+  presetScroll: {
+    gap: 10,
+    paddingVertical: 4,
+  },
+  presetCard: {
+    backgroundColor: "#F8FAFC",
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: "#E2E8F0",
+    padding: 10,
+    minWidth: 140,
+  },
+  presetCardSelected: {
+    borderColor: "#2563EB",
+    backgroundColor: "#EFF6FF",
+    borderWidth: 1.5,
+  },
+  presetBadge: {
+    backgroundColor: "#E2E8F0",
+    alignSelf: "flex-start",
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: 4,
+    marginBottom: 4,
+  },
+  presetBadgeText: {
+    fontSize: 9,
+    fontWeight: "700",
+    color: "#475569",
+  },
+  presetName: {
+    fontSize: 13,
+    fontWeight: "700",
+    color: "#0F172A",
+  },
+  presetPlate: {
+    fontSize: 11,
+    color: "#64748B",
+    marginTop: 2,
+    fontFamily: "monospace",
   },
   iconContainer: {
     alignItems: "center",
-    marginBottom: spacing["2xl"],
+    marginVertical: spacing.md,
   },
   vehicleIcon: {
-    width: 100,
-    height: 100,
-    borderRadius: 50,
+    width: 64,
+    height: 64,
+    borderRadius: 32,
     backgroundColor: colors.primary[50],
     alignItems: "center",
     justifyContent: "center",
   },
+  formSectionTitle: {
+    fontSize: 14,
+    fontWeight: "600",
+    color: "#475569",
+    marginTop: 8,
+  },
   form: {
-    gap: spacing.lg,
+    gap: spacing.md,
   },
   fieldGroup: {
     position: "relative",

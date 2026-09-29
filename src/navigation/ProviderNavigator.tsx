@@ -1,3 +1,4 @@
+import { NavigationContainer, NavigationIndependentTree } from "@react-navigation/native";
 import { createNativeStackNavigator } from "@react-navigation/native-stack";
 import { createBottomTabNavigator } from "@react-navigation/bottom-tabs";
 import { Ionicons } from "@expo/vector-icons";
@@ -18,11 +19,15 @@ import { NotificationsScreen } from "../screens/shared/NotificationsScreen";
 import { MechanicTrackingScreen } from "../screens/mechanic/MechanicTrackingScreen";
 
 import type { ProviderTabParamList, ProviderStackParamList } from "./types";
+import { useBookingStore } from "../store";
 
 const Tab = createBottomTabNavigator<ProviderTabParamList>();
 const Stack = createNativeStackNavigator<ProviderStackParamList>();
 
 function ProviderTabs() {
+  const { bookings } = useBookingStore();
+  const pendingCount = bookings.filter((b) => b.status?.toLowerCase() === "pending").length;
+
   return (
     <Tab.Navigator
       screenOptions={({ route }) => ({
@@ -69,7 +74,21 @@ function ProviderTabs() {
         component={DashboardScreen}
         options={{ tabBarLabel: "Home" }}
       />
-      <Tab.Screen name="Bookings" component={BookingsScreen} />
+      <Tab.Screen
+        name="Bookings"
+        component={BookingsScreen}
+        options={{
+          tabBarLabel: "Bookings",
+          tabBarBadge: pendingCount > 0 ? pendingCount : undefined,
+          tabBarBadgeStyle: {
+            backgroundColor: colors.error[600],
+            color: colors.white,
+            fontSize: 10,
+            fontWeight: "700",
+            lineHeight: 14,
+          },
+        }}
+      />
       <Tab.Screen name="Services" component={ServicesScreen} />
       <Tab.Screen
         name="Profile"
@@ -82,7 +101,9 @@ function ProviderTabs() {
 
 export function ProviderNavigator() {
   return (
-    <Stack.Navigator
+    <NavigationIndependentTree>
+      <NavigationContainer>
+        <Stack.Navigator
       screenOptions={{
         headerStyle: {
           backgroundColor: colors.white,
@@ -92,6 +113,7 @@ export function ProviderNavigator() {
           fontWeight: "600",
         },
         headerShadowVisible: false,
+        animation: "slide_from_right",
       }}
     >
       <Stack.Screen
@@ -130,5 +152,7 @@ export function ProviderNavigator() {
         options={{ headerShown: false }}
       />
     </Stack.Navigator>
+    </NavigationContainer>
+    </NavigationIndependentTree>
   );
 }

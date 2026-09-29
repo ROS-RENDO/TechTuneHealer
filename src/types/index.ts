@@ -25,6 +25,8 @@ export interface ServiceProvider extends User {
   services: Service[];
   rating: number;
   reviewCount: number;
+  totalReviews?: number;
+  reviews?: Review[];
   isVerified: boolean;
   isAvailable: boolean;
   workingHours: WorkingHours;
@@ -37,8 +39,9 @@ export interface Vehicle {
   make: string;
   model: string;
   year: number;
-  licensePlate: string;
-  color: string;
+  licensePlate?: string;
+  plateNumber?: string;
+  color?: string;
   vin?: string;
 }
 
@@ -58,6 +61,8 @@ export interface Service {
   priceMin: number;
   priceMax: number;
   estimatedDuration: number; // in minutes
+  price?: number;
+  duration?: number;
 }
 
 export type ServiceCategory =
@@ -99,6 +104,8 @@ export interface Booking {
   // Included Relations from API
   provider?: ServiceProvider;
   customer?: User;
+  vehicle?: Vehicle;
+  customerPhone?: string;
   // Optional mock properties for UI display
   customerName?: string;
   vehicleInfo?: string;
@@ -114,8 +121,13 @@ export interface Review {
   customerId: string;
   providerId: string;
   rating: number;
-  comment: string;
-  createdAt: Date;
+  comment?: string | null;
+  reply?: string | null;
+  createdAt: Date | string;
+  customer?: {
+    name: string;
+    avatar?: string | null;
+  };
 }
 
 // Chat Types

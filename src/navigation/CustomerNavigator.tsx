@@ -1,3 +1,4 @@
+import { NavigationContainer, NavigationIndependentTree } from "@react-navigation/native";
 import { createNativeStackNavigator } from "@react-navigation/native-stack";
 
 import { createBottomTabNavigator } from "@react-navigation/bottom-tabs";
@@ -15,11 +16,13 @@ import { ProviderDetailScreen } from "../screens/customer/ProviderDetailScreen";
 import { BookingCreateScreen } from "../screens/customer/BookingCreateScreen";
 import { BookingDetailScreen } from "../screens/customer/BookingDetailScreen";
 import { ChatScreen } from "../screens/shared/ChatScreen";
+import { NotificationsScreen } from "../screens/shared/NotificationsScreen";
 import { DiagnosticsScreen } from "../screens/customer/DiagnosticsScreen";
 import { DiagnosticsResultScreen } from "../screens/customer/DiagnosticsResultScreen";
 import { AiDiagnosisResultScreen } from "../screens/customer/AiDiagnosisResultScreen";
 import { EmergencyScreen } from "../screens/customer/EmergencyScreen";
 import { VehicleAddScreen } from "../screens/customer/VehicleAddScreen";
+import { VehiclesScreen } from "../screens/customer/VehiclesScreen";
 import { EditProfileScreen } from "../screens/customer/EditProfileScreen";
 import { ReviewCreateScreen } from "../screens/customer/ReviewCreateScreen";
 import { ShopScreen } from "../screens/customer/ShopScreen";
@@ -27,6 +30,7 @@ import { ProductDetailScreen } from "../screens/customer/ProductDetailScreen";
 import { CartScreen } from "../screens/customer/CartScreen";
 import { CustomerTrackingScreen } from "../screens/customer/CustomerTrackingScreen";
 import { PaymentScreen } from "../screens/customer/PaymentScreen";
+import { GarageScreen } from "../screens/customer/GarageScreen";
 
 import type { CustomerTabParamList, CustomerStackParamList } from "./types";
 
@@ -85,7 +89,9 @@ function CustomerTabs() {
 
 export function CustomerNavigator() {
   return (
-    <Stack.Navigator
+    <NavigationIndependentTree>
+      <NavigationContainer>
+        <Stack.Navigator
       screenOptions={{
         headerStyle: {
           backgroundColor: colors.white,
@@ -95,6 +101,7 @@ export function CustomerNavigator() {
           fontWeight: "600",
         },
         headerShadowVisible: false,
+        animation: "slide_from_right",
       }}
     >
       <Stack.Screen
@@ -152,13 +159,18 @@ export function CustomerNavigator() {
         options={{ title: "Add Vehicle" }}
       />
       <Stack.Screen
+        name="Vehicles"
+        component={VehiclesScreen}
+        options={{ title: "My Vehicles" }}
+      />
+      <Stack.Screen
         name="EditProfile"
         component={EditProfileScreen}
-        options={{ title: "Edit Profile", headerBackTitle: "Back" }}
+        options={{ headerShown: false }}
       />
       <Stack.Screen
         name="Notifications"
-        component={ChatScreen}
+        component={NotificationsScreen}
         options={{ title: "Notifications" }}
       />
       <Stack.Screen
@@ -191,6 +203,13 @@ export function CustomerNavigator() {
         component={PaymentScreen}
         options={{ title: 'Payment', headerShown: false }}
       />
+      <Stack.Screen
+        name="Garage"
+        component={GarageScreen}
+        options={{ headerShown: false }}
+      />
     </Stack.Navigator>
+    </NavigationContainer>
+    </NavigationIndependentTree>
   );
 }

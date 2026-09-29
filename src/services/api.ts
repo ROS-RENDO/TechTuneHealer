@@ -120,6 +120,20 @@ export const providersApi = {
 
   getEmergency: (lat: number, lng: number) =>
     fetchWithAuth<ServiceProvider[]>(`/providers/emergency?lat=${lat}&lng=${lng}`),
+
+  getMe: () => fetchWithAuth<ServiceProvider>('/providers/me'),
+
+  updateAvailability: (isAvailable: boolean) =>
+    fetchWithAuth<{ success: boolean; isAvailable: boolean }>('/providers/me/availability', {
+      method: 'PATCH',
+      body: JSON.stringify({ isAvailable }),
+    }),
+
+  updateSettings: (data: { dispatchRadiusKm?: number; isEmergencyOnCall?: boolean }) =>
+    fetchWithAuth<{ success: boolean; dispatchRadiusKm: number; isEmergencyOnCall: boolean }>('/providers/me/settings', {
+      method: 'PATCH',
+      body: JSON.stringify(data),
+    }),
 };
 
 // Bookings API

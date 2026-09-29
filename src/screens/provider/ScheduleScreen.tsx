@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useMemo, useCallback } from "react";
 import {
   View,
   Text,
@@ -6,279 +6,430 @@ import {
   ScrollView,
   TouchableOpacity,
   Switch,
-} from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
-import { Ionicons } from '@expo/vector-icons';
-import { colors, typography, spacing, borderRadius, shadows } from '../../constants/theme';
-
-interface DaySchedule {
-  day: string;
-  shortDay: string;
-  isEnabled: boolean;
-  startTime: string;
-  endTime: string;
-}
-
-interface TimeSlot {
-  id: string;
-  time: string;
-  isBooked: boolean;
-  customerName?: string;
-  service?: string;
-}
-
-const DAYS_OF_WEEK: DaySchedule[] = [
-  { day: 'Monday', shortDay: 'Mon', isEnabled: true, startTime: '08:00', endTime: '18:00' },
-  { day: 'Tuesday', shortDay: 'Tue', isEnabled: true, startTime: '08:00', endTime: '18:00' },
-  { day: 'Wednesday', shortDay: 'Wed', isEnabled: true, startTime: '08:00', endTime: '18:00' },
-  { day: 'Thursday', shortDay: 'Thu', isEnabled: true, startTime: '08:00', endTime: '18:00' },
-  { day: 'Friday', shortDay: 'Fri', isEnabled: true, startTime: '08:00', endTime: '18:00' },
-  { day: 'Saturday', shortDay: 'Sat', isEnabled: true, startTime: '09:00', endTime: '15:00' },
-  { day: 'Sunday', shortDay: 'Sun', isEnabled: false, startTime: '09:00', endTime: '15:00' },
-];
-
-const generateTimeSlots = (): TimeSlot[] => {
-  const slots: TimeSlot[] = [];
-  for (let hour = 8; hour < 18; hour++) {
-    slots.push({
-      id: `${hour}:00`,
-      time: `${hour.toString().padStart(2, '0')}:00`,
-      isBooked: Math.random() > 0.7,
-      customerName: Math.random() > 0.7 ? 'John Doe' : undefined,
-      service: Math.random() > 0.7 ? 'Oil Change' : undefined,
-    });
-  }
-  return slots;
-};
+  Modal,
+  Alert,
+  RefreshControl,
+} from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
+import { Ionicons } from "@expo/vector-icons";
+import { colors, spacing, borderRadius, shadows } from "../../constants/theme";
+import {
+  INITIAL_WEEKLY_SCHEDULE,
+  MockDaySchedule,
+  MockTimeSlot,
+} from "../../data/mockProviderData";
+import api from "../../services/api";
+import { useBookingStore } from "../../store";
+import { AnimatedEntrance } from "../../components/AnimatedEntrance";
 
 export default function ScheduleScreen() {
-  const [schedule, setSchedule] = useState<DaySchedule[]>(DAYS_OF_WEEK);
-  const [selectedDate, setSelectedDate] = useState(new Date());
-  const [showWeeklyView, setShowWeeklyView] = useState(false);
-  const [timeSlots] = useState<TimeSlot[]>(generateTimeSlots());
+  const { bookings, fetchBookings } = useBookingStore();
+  const [schedule, setSchedule] = useState<MockDaySchedule[]>(INITIAL_WEEKLY_SCHEDULE);
+  const [activeTab, setActiveTab] = useState<"weekly" | "timeline">("weekly");
+  const [selectedDayIndex, setSelectedDayIndex] = useState(0); // Mon
+  const [timeEditModalVisible, setTimeEditModalVisible] = useState(false);
+  const [editingDay, setEditingDay] = useState<MockDaySchedule | null>(null);
+  const [refreshing, setRefreshing] = useState(false);
 
-  const getWeekDates = () => {
-    const dates = [];
-    const startOfWeek = new Date(selectedDate);
-    startOfWeek.setDate(startOfWeek.getDate() - startOfWeek.getDay());
-    
-    for (let i = 0; i < 7; i++) {
-      const date = new Date(startOfWeek);
-      date.setDate(date.getDate() + i);
-      dates.push(date);
+  // Load real provider schedule from backend
+  const loadScheduleData = useCallback(async () => {
+    try {
+      await fetchBookings();
+      const me = await api.providers.getMe();
+      if (me && me.workingHours) {
+        const dayKeys = [
+          { key: "monday", day: "Monday", shortDay: "Mon" },
+          { key: "tuesday", day: "Tuesday", shortDay: "Tue" },
+          { key: "wednesday", day: "Wednesday", shortDay: "Wed" },
+          { key: "thursday", day: "Thursday", shortDay: "Thu" },
+          { key: "friday", day: "Friday", shortDay: "Fri" },
+          { key: "saturday", day: "Saturday", shortDay: "Sat" },
+          { key: "sunday", day: "Sunday", shortDay: "Sun" },
+        ];
+        const mapped: MockDaySchedule[] = dayKeys.map(({ key, day, shortDay }) => {
+          const h = (me.workingHours as any)[key];
+          return {
+            day,
+            shortDay,
+            isEnabled: h ? Boolean(h.isOpen) : true,
+            startTime: h?.openTime || "08:00 AM",
+            endTime: h?.closeTime || "06:00 PM",
+          };
+        });
+        setSchedule(mapped);
+      }
+    } catch {
+      // Keep baseline
     }
-    return dates;
+  }, [fetchBookings]);
+
+  useEffect(() => {
+    loadScheduleData();
+  }, [loadScheduleData]);
+
+  const onRefresh = async () => {
+    setRefreshing(true);
+    await loadScheduleData();
+    setRefreshing(false);
   };
 
-  const weekDates = getWeekDates();
+  // Build real daily time slots from actual live bookings
+  const timeSlots = useMemo<MockTimeSlot[]>(() => {
+    const baseHours = [
+      "08:00 AM",
+      "09:00 AM",
+      "10:00 AM",
+      "11:00 AM",
+      "12:00 PM",
+      "01:00 PM",
+      "02:00 PM",
+      "03:00 PM",
+      "04:00 PM",
+      "05:00 PM",
+    ];
 
-  const toggleDay = (index: number) => {
-    const newSchedule = [...schedule];
-    newSchedule[index].isEnabled = !newSchedule[index].isEnabled;
-    setSchedule(newSchedule);
+    const activeBookings = bookings.filter((b) => b.status !== "cancelled");
+
+    return baseHours.map((hour, idx) => {
+      // Match by hour prefix & AM/PM
+      const match = activeBookings.find((b) => {
+        if (!b.scheduledTime) return false;
+        const bTime = b.scheduledTime.toUpperCase();
+        const bHourPrefix = bTime.slice(0, 2);
+        const slotHourPrefix = hour.slice(0, 2);
+        const bAmPm = bTime.includes("PM") ? "PM" : "AM";
+        const slotAmPm = hour.includes("PM") ? "PM" : "AM";
+        return bHourPrefix === slotHourPrefix && bAmPm === slotAmPm;
+      });
+
+      if (match) {
+        const vehicleText = match.vehicle
+          ? `${match.vehicle.make} ${match.vehicle.model}`
+          : match.vehicleInfo || "Registered Vehicle";
+        return {
+          id: match.id,
+          time: match.scheduledTime || hour,
+          isBooked: true,
+          customerName: match.customer?.name || match.customerName || "Verified Customer",
+          vehicleModel: vehicleText,
+          service: match.serviceType || "Emergency Repair & Diagnostics",
+        };
+      }
+
+      return {
+        id: `slot-${idx}`,
+        time: hour,
+        isBooked: false,
+      };
+    });
+  }, [bookings]);
+
+  const toggleDayEnabled = (index: number) => {
+    setSchedule((prev) =>
+      prev.map((item, idx) => (idx === index ? { ...item, isEnabled: !item.isEnabled } : item))
+    );
   };
 
-  const isToday = (date: Date) => {
-    const today = new Date();
-    return date.toDateString() === today.toDateString();
+  const handleOpenTimeModal = (day: MockDaySchedule) => {
+    setEditingDay(day);
+    setTimeEditModalVisible(true);
   };
 
-  const isSelected = (date: Date) => {
-    return date.toDateString() === selectedDate.toDateString();
+  const setHoursPreset = (startTime: string, endTime: string) => {
+    if (editingDay) {
+      setSchedule((prev) =>
+        prev.map((item) =>
+          item.day === editingDay.day ? { ...item, startTime, endTime, isEnabled: true } : item
+        )
+      );
+      setTimeEditModalVisible(false);
+    }
   };
+
+  const openDaysCount = schedule.filter((d) => d.isEnabled).length;
 
   return (
-    <SafeAreaView style={styles.container}>
-      <View style={styles.header}>
-        <Text style={styles.title}>Schedule</Text>
-        <View style={styles.headerActions}>
-          <TouchableOpacity
-            style={styles.viewToggle}
-            onPress={() => setShowWeeklyView(!showWeeklyView)}
-          >
-            <Ionicons
-              name={showWeeklyView ? 'calendar' : 'list'}
-              size={20}
-              color={colors.primary[500]}
-            />
-            <Text style={styles.viewToggleText}>
-              {showWeeklyView ? 'Daily' : 'Weekly'}
+    <SafeAreaView style={styles.container} edges={["top"]}>
+      {/* Header */}
+      <AnimatedEntrance delay={0} direction="down">
+        <View style={styles.header}>
+          <View>
+            <Text style={styles.headerTitle}>Hours & Schedule</Text>
+            <Text style={styles.headerSubtitle}>
+              {openDaysCount} Days Active • Weekly Workshop Operations
             </Text>
-          </TouchableOpacity>
-        </View>
-      </View>
-
-      <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
-        <View style={styles.calendarStrip}>
-          <TouchableOpacity
-            style={styles.navButton}
-            onPress={() => {
-              const newDate = new Date(selectedDate);
-              newDate.setDate(newDate.getDate() - 7);
-              setSelectedDate(newDate);
-            }}
-          >
-            <Ionicons name="chevron-back" size={24} color={colors.text} />
-          </TouchableOpacity>
-          <View style={styles.weekDays}>
-            {weekDates.map((date, index) => (
-              <TouchableOpacity
-                key={index}
-                style={[
-                  styles.dayButton,
-                  isSelected(date) && styles.dayButtonSelected,
-                  isToday(date) && styles.dayButtonToday,
-                ]}
-                onPress={() => setSelectedDate(date)}
-              >
-                <Text
-                  style={[
-                    styles.dayName,
-                    isSelected(date) && styles.dayNameSelected,
-                  ]}
-                >
-                  {['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'][date.getDay()]}
-                </Text>
-                <Text
-                  style={[
-                    styles.dayNumber,
-                    isSelected(date) && styles.dayNumberSelected,
-                  ]}
-                >
-                  {date.getDate()}
-                </Text>
-              </TouchableOpacity>
-            ))}
           </View>
-          <TouchableOpacity
-            style={styles.navButton}
-            onPress={() => {
-              const newDate = new Date(selectedDate);
-              newDate.setDate(newDate.getDate() + 7);
-              setSelectedDate(newDate);
-            }}
-          >
-            <Ionicons name="chevron-forward" size={24} color={colors.text} />
-          </TouchableOpacity>
+
+          {/* Tab Toggle between Weekly Rules and Daily Timeline */}
+          <View style={styles.viewToggleContainer}>
+            <TouchableOpacity
+              style={[styles.viewToggleBtn, activeTab === "weekly" && styles.viewToggleBtnActive]}
+              onPress={() => setActiveTab("weekly")}
+            >
+              <Ionicons
+                name="calendar-outline"
+                size={14}
+                color={activeTab === "weekly" ? colors.white : colors.neutral[600]}
+              />
+              <Text
+                style={[
+                  styles.viewToggleBtnText,
+                  activeTab === "weekly" && styles.viewToggleBtnTextActive,
+                ]}
+              >
+                Weekly
+              </Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={[styles.viewToggleBtn, activeTab === "timeline" && styles.viewToggleBtnActive]}
+              onPress={() => setActiveTab("timeline")}
+            >
+              <Ionicons
+                name="time-outline"
+                size={14}
+                color={activeTab === "timeline" ? colors.white : colors.neutral[600]}
+              />
+              <Text
+                style={[
+                  styles.viewToggleBtnText,
+                  activeTab === "timeline" && styles.viewToggleBtnTextActive,
+                ]}
+              >
+                Timeline
+              </Text>
+            </TouchableOpacity>
+          </View>
         </View>
+      </AnimatedEntrance>
 
-        {showWeeklyView ? (
-          <View style={styles.weeklySchedule}>
-            <Text style={styles.sectionTitle}>Working Hours</Text>
-            {schedule.map((day, index) => (
-              <View key={day.day} style={styles.dayScheduleItem}>
-                <View style={styles.dayInfo}>
-                  <Text
-                    style={[
-                      styles.dayLabel,
-                      !day.isEnabled && styles.dayLabelDisabled,
-                    ]}
-                  >
-                    {day.day}
-                  </Text>
-                  {day.isEnabled && (
-                    <Text style={styles.hoursText}>
-                      {day.startTime} - {day.endTime}
-                    </Text>
-                  )}
-                </View>
-                <Switch
-                  value={day.isEnabled}
-                  onValueChange={() => toggleDay(index)}
-                  trackColor={{ false: colors.border, true: colors.primaryLight }}
-                  thumbColor={day.isEnabled ? colors.primary[500] : colors.textSecondary}
-                />
+      <ScrollView
+        style={styles.scrollContent}
+        showsVerticalScrollIndicator={false}
+        contentContainerStyle={styles.scrollInner}
+        refreshControl={
+          <RefreshControl
+            refreshing={refreshing}
+            onRefresh={onRefresh}
+            colors={[colors.primary[600]]}
+          />
+        }
+      >
+        {/* 24/7 Emergency Night Shift Hero Banner */}
+        <AnimatedEntrance delay={80} direction="up">
+          <View style={styles.nightShiftHero}>
+            <View style={styles.nightShiftLeft}>
+              <View style={styles.nightShiftIconCircle}>
+                <Ionicons name="moon" size={18} color="#FBBF24" />
               </View>
-            ))}
-
-            <View style={styles.breakSection}>
-              <Text style={styles.sectionTitle}>Break Times</Text>
-              <TouchableOpacity style={styles.addBreakButton}>
-                <Ionicons name="add-circle-outline" size={20} color={colors.primary[500]} />
-                <Text style={styles.addBreakText}>Add Break Time</Text>
-              </TouchableOpacity>
+              <View>
+                <Text style={styles.nightShiftTitle}>24/7 Roadside Night Patrol</Text>
+                <Text style={styles.nightShiftSubtitle}>
+                  On-call dispatch readiness from 10:00 PM to 06:00 AM
+                </Text>
+              </View>
             </View>
+            <View style={styles.nightShiftPill}>
+              <View style={styles.pulseDot} />
+              <Text style={styles.nightShiftPillText}>STANDBY</Text>
+            </View>
+          </View>
+        </AnimatedEntrance>
+
+        <AnimatedEntrance delay={140} direction="up">
+
+        {activeTab === "weekly" ? (
+          /* WEEKLY OPERATING HOURS VIEW */
+          <View style={styles.weeklyCard}>
+            <Text style={styles.cardHeaderTitle}>Standard Workshop Operating Hours</Text>
+            <Text style={styles.cardHeaderSub}>
+              Customers will only be allowed to book regular service appointments during open times.
+            </Text>
+
+            {schedule.map((item, index) => {
+              return (
+                <View key={item.day} style={styles.dayRow}>
+                  <View style={styles.dayLeft}>
+                    <View
+                      style={[
+                        styles.dayIndicator,
+                        { backgroundColor: item.isEnabled ? colors.primary[600] : colors.neutral[300] },
+                      ]}
+                    />
+                    <View>
+                      <Text
+                        style={[
+                          styles.dayNameText,
+                          !item.isEnabled && styles.dayNameTextDisabled,
+                        ]}
+                      >
+                        {item.day}
+                      </Text>
+                      <Text style={styles.dayStatusSub}>
+                        {item.isEnabled ? "Open for Bookings" : "Closed / Off Duty"}
+                      </Text>
+                    </View>
+                  </View>
+
+                  <View style={styles.dayRight}>
+                    {item.isEnabled ? (
+                      <TouchableOpacity
+                        style={styles.timeBadgeButton}
+                        onPress={() => handleOpenTimeModal(item)}
+                      >
+                        <Text style={styles.timeBadgeText}>
+                          {item.startTime} – {item.endTime}
+                        </Text>
+                        <Ionicons name="pencil-outline" size={12} color={colors.primary[600]} />
+                      </TouchableOpacity>
+                    ) : (
+                      <View style={styles.closedPill}>
+                        <Text style={styles.closedPillText}>CLOSED</Text>
+                      </View>
+                    )}
+
+                    <Switch
+                      value={item.isEnabled}
+                      onValueChange={() => toggleDayEnabled(index)}
+                      trackColor={{ false: colors.neutral[300], true: colors.primary[600] }}
+                      thumbColor={colors.white}
+                    />
+                  </View>
+                </View>
+              );
+            })}
           </View>
         ) : (
-          <View style={styles.dailySchedule}>
-            <View style={styles.dateHeader}>
-              <Text style={styles.selectedDateText}>
-                {selectedDate.toLocaleDateString('en-US', {
-                  weekday: 'long',
-                  month: 'long',
-                  day: 'numeric',
-                })}
-              </Text>
-              <View style={styles.availabilityToggle}>
-                <Text style={styles.availabilityLabel}>Available</Text>
-                <Switch
-                  value={true}
-                  trackColor={{ false: colors.border, true: colors.primaryLight }}
-                  thumbColor={colors.primary[500]}
-                />
-              </View>
-            </View>
-
-            <View style={styles.timeSlotsContainer}>
-              {timeSlots.map((slot) => (
-                <TouchableOpacity
-                  key={slot.id}
-                  style={[
-                    styles.timeSlot,
-                    slot.isBooked && styles.timeSlotBooked,
-                  ]}
-                >
-                  <View style={styles.timeSlotTime}>
+          /* DAILY TIMELINE VIEW */
+          <View style={styles.timelineContainer}>
+            {/* Horizontal Day Switcher */}
+            <View style={styles.daySelectorRow}>
+              {schedule.map((d, idx) => {
+                const isSelected = selectedDayIndex === idx;
+                return (
+                  <TouchableOpacity
+                    key={d.day}
+                    style={[styles.daySelectChip, isSelected && styles.daySelectChipActive]}
+                    onPress={() => setSelectedDayIndex(idx)}
+                  >
                     <Text
                       style={[
-                        styles.slotTimeText,
-                        slot.isBooked && styles.slotTimeTextBooked,
+                        styles.daySelectChipDay,
+                        isSelected && styles.daySelectChipDayActive,
                       ]}
                     >
-                      {slot.time}
+                      {d.shortDay}
                     </Text>
-                  </View>
-                  <View style={styles.timeSlotContent}>
-                    {slot.isBooked ? (
-                      <>
-                        <Text style={styles.bookedCustomer}>{slot.customerName}</Text>
-                        <Text style={styles.bookedService}>{slot.service}</Text>
-                      </>
-                    ) : (
-                      <Text style={styles.availableText}>Available</Text>
-                    )}
-                  </View>
-                  {slot.isBooked && (
-                    <View style={styles.bookedBadge}>
-                      <Text style={styles.bookedBadgeText}>Booked</Text>
+                    <View
+                      style={[
+                        styles.daySelectDot,
+                        { backgroundColor: d.isEnabled ? colors.success[500] : colors.neutral[300] },
+                      ]}
+                    />
+                  </TouchableOpacity>
+                );
+              })}
+            </View>
+
+            <View style={styles.timelineCard}>
+              <View style={styles.timelineCardHeader}>
+                <Text style={styles.timelineCardTitle}>
+                  {schedule[selectedDayIndex].day} Appointments
+                </Text>
+                <Text style={styles.timelineCardHours}>
+                  {schedule[selectedDayIndex].isEnabled
+                    ? `${schedule[selectedDayIndex].startTime} - ${schedule[selectedDayIndex].endTime}`
+                    : "Workshop Closed"}
+                </Text>
+              </View>
+
+              {/* Time Slots List */}
+              {timeSlots.map((slot) => {
+                return (
+                  <View key={slot.id} style={styles.slotRow}>
+                    <View style={styles.slotTimeCol}>
+                      <Text style={styles.slotTimeText}>{slot.time}</Text>
+                      <View style={styles.slotVerticalLine} />
                     </View>
-                  )}
-                </TouchableOpacity>
-              ))}
+
+                    <View
+                      style={[
+                        styles.slotContentCard,
+                        slot.isBooked ? styles.slotBookedCard : styles.slotAvailableCard,
+                      ]}
+                    >
+                      {slot.isBooked ? (
+                        <>
+                          <View style={styles.slotCustomerRow}>
+                            <Text style={styles.slotCustomerName}>{slot.customerName}</Text>
+                            <View style={styles.bookedBadge}>
+                              <Ionicons name="checkmark-circle" size={11} color={colors.primary[700]} />
+                              <Text style={styles.bookedBadgeText}>RESERVED</Text>
+                            </View>
+                          </View>
+                          <Text style={styles.slotVehicleText}>🚗 {slot.vehicleModel}</Text>
+                          <Text style={styles.slotServiceText}>🔧 {slot.service}</Text>
+                        </>
+                      ) : (
+                        <View style={styles.availableSlotContent}>
+                          <Ionicons name="add-circle-outline" size={18} color={colors.success[600]} />
+                          <Text style={styles.availableSlotText}>Available Slot • Open for Booking</Text>
+                        </View>
+                      )}
+                    </View>
+                  </View>
+                );
+              })}
             </View>
           </View>
         )}
+        </AnimatedEntrance>
+      </ScrollView>
 
-        <View style={styles.specialDates}>
-          <Text style={styles.sectionTitle}>Time Off</Text>
-          <View style={styles.timeOffItem}>
-            <View style={styles.timeOffIcon}>
-              <Ionicons name="calendar-outline" size={20} color={colors.error[500]} />
+      {/* Edit Hours Preset Modal */}
+      <Modal
+        visible={timeEditModalVisible}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setTimeEditModalVisible(false)}
+      >
+        <View style={styles.modalBackdrop}>
+          <View style={styles.modalCard}>
+            <View style={styles.modalHeader}>
+              <Ionicons name="time" size={24} color={colors.primary[600]} />
+              <Text style={styles.modalTitle}>
+                Edit Hours: {editingDay?.day}
+              </Text>
             </View>
-            <View style={styles.timeOffInfo}>
-              <Text style={styles.timeOffDate}>Jan 25 - Jan 26, 2024</Text>
-              <Text style={styles.timeOffReason}>Personal Leave</Text>
-            </View>
-            <TouchableOpacity>
-              <Ionicons name="close-circle" size={24} color={colors.textSecondary} />
+            <Text style={styles.modalSubtitle}>
+              Select standard shift hours for this working day:
+            </Text>
+
+            {[
+              { label: "Standard Day (08:00 AM – 06:00 PM)", start: "08:00", end: "18:00" },
+              { label: "Morning Shift (07:30 AM – 03:30 PM)", start: "07:30", end: "15:30" },
+              { label: "Extended Shift (08:00 AM – 08:00 PM)", start: "08:00", end: "20:00" },
+              { label: "Weekend Half-Day (08:30 AM – 02:00 PM)", start: "08:30", end: "14:00" },
+            ].map((preset, idx) => (
+              <TouchableOpacity
+                key={idx}
+                style={styles.presetButton}
+                onPress={() => setHoursPreset(preset.start, preset.end)}
+              >
+                <Text style={styles.presetButtonText}>{preset.label}</Text>
+                <Ionicons name="chevron-forward" size={16} color={colors.neutral[400]} />
+              </TouchableOpacity>
+            ))}
+
+            <TouchableOpacity
+              style={styles.modalCloseBtn}
+              onPress={() => setTimeEditModalVisible(false)}
+            >
+              <Text style={styles.modalCloseBtnText}>Cancel</Text>
             </TouchableOpacity>
           </View>
-          <TouchableOpacity style={styles.addTimeOffButton}>
-            <Ionicons name="add-circle-outline" size={20} color={colors.primary[500]} />
-            <Text style={styles.addTimeOffText}>Request Time Off</Text>
-          </TouchableOpacity>
         </View>
-      </ScrollView>
+      </Modal>
     </SafeAreaView>
   );
 }
@@ -286,259 +437,401 @@ export default function ScheduleScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: colors.background,
+    backgroundColor: "#F8FAFC",
   },
   header: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
     paddingHorizontal: spacing.lg,
-    paddingVertical: spacing.md,
-    backgroundColor: colors.surface,
-    borderBottomWidth: 1,
-    borderBottomColor: colors.border,
+    paddingTop: spacing.sm,
+    paddingBottom: spacing.sm,
   },
-  title: {
-    ...typography.h1,
-    color: colors.text,
+  headerTitle: {
+    fontSize: 22,
+    fontWeight: "700",
+    color: colors.neutral[900],
+    letterSpacing: -0.4,
   },
-  headerActions: {
-    flexDirection: 'row',
-    gap: spacing.sm,
-  },
-  viewToggle: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing.xs,
-    paddingHorizontal: spacing.md,
-    paddingVertical: spacing.sm,
-    backgroundColor: colors.primaryLight,
-    borderRadius: borderRadius.full,
-  },
-  viewToggleText: {
-    ...typography.body,
-    color: colors.primary[500],
-    fontWeight: '600',
-  },
-  content: {
-    flex: 1,
-  },
-  calendarStrip: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: colors.surface,
-    paddingVertical: spacing.md,
-    paddingHorizontal: spacing.sm,
-  },
-  navButton: {
-    padding: spacing.sm,
-  },
-  weekDays: {
-    flex: 1,
-    flexDirection: 'row',
-    justifyContent: 'space-around',
-  },
-  dayButton: {
-    alignItems: 'center',
-    paddingVertical: spacing.sm,
-    paddingHorizontal: spacing.sm,
-    borderRadius: borderRadius.md,
-  },
-  dayButtonSelected: {
-    backgroundColor: colors.primary[500],
-  },
-  dayButtonToday: {
-    borderWidth: 2,
-    borderColor: colors.primary[500],
-  },
-  dayName: {
-    ...typography.caption,
-    color: colors.textSecondary,
-    marginBottom: 2,
-  },
-  dayNameSelected: {
-    color: colors.white,
-  },
-  dayNumber: {
-    ...typography.bodyBold,
-    color: colors.text,
-  },
-  dayNumberSelected: {
-    color: colors.white,
-  },
-  weeklySchedule: {
-    padding: spacing.lg,
-  },
-  sectionTitle: {
-    ...typography.h3,
-    color: colors.text,
-    marginBottom: spacing.md,
-  },
-  dayScheduleItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    backgroundColor: colors.surface,
-    padding: spacing.md,
-    borderRadius: borderRadius.lg,
-    marginBottom: spacing.sm,
-    ...shadows.small,
-  },
-  dayInfo: {
-    flex: 1,
-  },
-  dayLabel: {
-    ...typography.bodyBold,
-    color: colors.text,
-  },
-  dayLabelDisabled: {
-    color: colors.textSecondary,
-  },
-  hoursText: {
-    ...typography.caption,
-    color: colors.textSecondary,
+  headerSubtitle: {
+    fontSize: 13,
+    color: colors.neutral[500],
     marginTop: 2,
   },
-  breakSection: {
-    marginTop: spacing.lg,
+  viewToggleContainer: {
+    flexDirection: "row",
+    backgroundColor: colors.neutral[200],
+    borderRadius: borderRadius.full,
+    padding: 3,
   },
-  addBreakButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
+  viewToggleBtn: {
+    flexDirection: "row",
+    alignItems: "center",
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+    borderRadius: borderRadius.full,
+    gap: 4,
+  },
+  viewToggleBtnActive: {
+    backgroundColor: colors.primary[600],
+    ...shadows.sm,
+  },
+  viewToggleBtnText: {
+    fontSize: 11,
+    fontWeight: "600",
+    color: colors.neutral[700],
+  },
+  viewToggleBtnTextActive: {
+    color: colors.white,
+  },
+  scrollContent: {
+    flex: 1,
+  },
+  scrollInner: {
+    paddingHorizontal: spacing.lg,
+    paddingBottom: spacing["4xl"],
+  },
+  nightShiftHero: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    backgroundColor: "#0F172A",
+    borderRadius: borderRadius.xl,
+    padding: spacing.md,
+    marginTop: spacing.xs,
+    marginBottom: spacing.md,
+    ...shadows.sm,
+  },
+  nightShiftLeft: {
+    flexDirection: "row",
+    alignItems: "center",
     gap: spacing.sm,
+    flex: 1,
+  },
+  nightShiftIconCircle: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: "rgba(255, 255, 255, 0.1)",
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  nightShiftTitle: {
+    fontSize: 13,
+    fontWeight: "700",
+    color: colors.white,
+  },
+  nightShiftSubtitle: {
+    fontSize: 10,
+    color: colors.neutral[400],
+    marginTop: 1,
+  },
+  nightShiftPill: {
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: "rgba(245, 158, 11, 0.2)",
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: borderRadius.full,
+    borderWidth: 1,
+    borderColor: "rgba(245, 158, 11, 0.4)",
+    gap: 4,
+  },
+  pulseDot: {
+    width: 6,
+    height: 6,
+    borderRadius: 3,
+    backgroundColor: "#FBBF24",
+  },
+  nightShiftPillText: {
+    fontSize: 9,
+    fontWeight: "700",
+    color: "#FBBF24",
+  },
+  weeklyCard: {
+    backgroundColor: colors.white,
+    borderRadius: borderRadius.xl,
     padding: spacing.md,
     borderWidth: 1,
-    borderColor: colors.border,
-    borderRadius: borderRadius.lg,
-    borderStyle: 'dashed',
+    borderColor: colors.neutral[200],
+    ...shadows.sm,
   },
-  addBreakText: {
-    ...typography.body,
-    color: colors.primary[500],
-    fontWeight: '600',
+  cardHeaderTitle: {
+    fontSize: 15,
+    fontWeight: "700",
+    color: colors.neutral[900],
+    marginBottom: 2,
   },
-  dailySchedule: {
-    padding: spacing.lg,
-  },
-  dateHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
+  cardHeaderSub: {
+    fontSize: 11,
+    color: colors.neutral[500],
     marginBottom: spacing.md,
+    lineHeight: 16,
   },
-  selectedDateText: {
-    ...typography.h3,
-    color: colors.text,
+  dayRow: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    paddingVertical: 10,
+    borderBottomWidth: 1,
+    borderBottomColor: colors.neutral[100],
   },
-  availabilityToggle: {
-    flexDirection: 'row',
-    alignItems: 'center',
+  dayLeft: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: spacing.sm,
+    flex: 1,
+  },
+  dayIndicator: {
+    width: 4,
+    height: 32,
+    borderRadius: 2,
+  },
+  dayNameText: {
+    fontSize: 14,
+    fontWeight: "700",
+    color: colors.neutral[900],
+  },
+  dayNameTextDisabled: {
+    color: colors.neutral[400],
+  },
+  dayStatusSub: {
+    fontSize: 10,
+    color: colors.neutral[400],
+  },
+  dayRight: {
+    flexDirection: "row",
+    alignItems: "center",
     gap: spacing.sm,
   },
-  availabilityLabel: {
-    ...typography.body,
-    color: colors.textSecondary,
+  timeBadgeButton: {
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: colors.primary[50],
+    paddingHorizontal: 8,
+    paddingVertical: 5,
+    borderRadius: borderRadius.md,
+    borderWidth: 1,
+    borderColor: colors.primary[100],
+    gap: 4,
   },
-  timeSlotsContainer: {
-    gap: spacing.sm,
+  timeBadgeText: {
+    fontSize: 11,
+    fontWeight: "600",
+    color: colors.primary[700],
   },
-  timeSlot: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: colors.surface,
+  closedPill: {
+    backgroundColor: colors.neutral[100],
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: borderRadius.md,
+  },
+  closedPillText: {
+    fontSize: 10,
+    fontWeight: "700",
+    color: colors.neutral[500],
+  },
+  timelineContainer: {},
+  daySelectorRow: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    marginBottom: spacing.md,
+    gap: 6,
+  },
+  daySelectChip: {
+    flex: 1,
+    paddingVertical: 8,
+    alignItems: "center",
     borderRadius: borderRadius.lg,
+    backgroundColor: colors.white,
+    borderWidth: 1,
+    borderColor: colors.neutral[200],
+    ...shadows.sm,
+  },
+  daySelectChipActive: {
+    backgroundColor: colors.primary[600],
+    borderColor: colors.primary[600],
+  },
+  daySelectChipDay: {
+    fontSize: 11,
+    fontWeight: "700",
+    color: colors.neutral[700],
+    marginBottom: 4,
+  },
+  daySelectChipDayActive: {
+    color: colors.white,
+  },
+  daySelectDot: {
+    width: 6,
+    height: 6,
+    borderRadius: 3,
+  },
+  timelineCard: {
+    backgroundColor: colors.white,
+    borderRadius: borderRadius.xl,
     padding: spacing.md,
-    borderLeftWidth: 4,
-    borderLeftColor: colors.success[500],
-    ...shadows.small,
+    borderWidth: 1,
+    borderColor: colors.neutral[200],
+    ...shadows.sm,
   },
-  timeSlotBooked: {
-    borderLeftColor: colors.warning[500],
+  timelineCardHeader: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    paddingBottom: spacing.sm,
+    borderBottomWidth: 1,
+    borderBottomColor: colors.neutral[100],
+    marginBottom: spacing.sm,
   },
-  timeSlotTime: {
-    width: 60,
+  timelineCardTitle: {
+    fontSize: 14,
+    fontWeight: "700",
+    color: colors.neutral[900],
+  },
+  timelineCardHours: {
+    fontSize: 11,
+    fontWeight: "600",
+    color: colors.primary[600],
+  },
+  slotRow: {
+    flexDirection: "row",
+    marginBottom: spacing.sm,
+  },
+  slotTimeCol: {
+    width: 65,
+    alignItems: "center",
+    paddingTop: 4,
   },
   slotTimeText: {
-    ...typography.bodyBold,
-    color: colors.text,
+    fontSize: 11,
+    fontWeight: "700",
+    color: colors.neutral[600],
   },
-  slotTimeTextBooked: {
-    color: colors.textSecondary,
-  },
-  timeSlotContent: {
+  slotVerticalLine: {
+    width: 2,
     flex: 1,
+    backgroundColor: colors.neutral[200],
+    marginTop: 4,
+    borderRadius: 1,
   },
-  availableText: {
-    ...typography.body,
-    color: colors.success[500],
+  slotContentCard: {
+    flex: 1,
+    padding: spacing.sm,
+    borderRadius: borderRadius.lg,
+    borderWidth: 1,
   },
-  bookedCustomer: {
-    ...typography.bodyBold,
-    color: colors.text,
+  slotBookedCard: {
+    backgroundColor: "#F8FAFC",
+    borderColor: colors.primary[100],
   },
-  bookedService: {
-    ...typography.caption,
-    color: colors.textSecondary,
+  slotAvailableCard: {
+    backgroundColor: colors.white,
+    borderColor: colors.neutral[200],
+    borderStyle: "dashed",
+    justifyContent: "center",
+  },
+  slotCustomerRow: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    marginBottom: 2,
+  },
+  slotCustomerName: {
+    fontSize: 13,
+    fontWeight: "700",
+    color: colors.neutral[900],
   },
   bookedBadge: {
-    backgroundColor: `${colors.warning[500]}20`,
-    paddingHorizontal: spacing.sm,
-    paddingVertical: spacing.xs,
-    borderRadius: borderRadius.full,
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: colors.primary[50],
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: borderRadius.sm,
+    gap: 3,
   },
   bookedBadgeText: {
-    ...typography.caption,
-    color: colors.warning[500],
-    fontWeight: '600',
+    fontSize: 9,
+    fontWeight: "700",
+    color: colors.primary[700],
   },
-  specialDates: {
-    padding: spacing.lg,
-    paddingTop: 0,
+  slotVehicleText: {
+    fontSize: 11,
+    color: colors.neutral[600],
+    marginTop: 1,
   },
-  timeOffItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: colors.surface,
-    padding: spacing.md,
-    borderRadius: borderRadius.lg,
-    marginBottom: spacing.sm,
-    ...shadows.small,
+  slotServiceText: {
+    fontSize: 11,
+    color: colors.primary[700],
+    fontWeight: "600",
+    marginTop: 1,
   },
-  timeOffIcon: {
-    width: 40,
-    height: 40,
-    borderRadius: borderRadius.md,
-    backgroundColor: `${colors.error[500]}15`,
-    justifyContent: 'center',
-    alignItems: 'center',
+  availableSlotContent: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+    paddingVertical: 4,
   },
-  timeOffInfo: {
+  availableSlotText: {
+    fontSize: 11,
+    color: colors.neutral[500],
+    fontWeight: "500",
+  },
+  modalBackdrop: {
     flex: 1,
-    marginLeft: spacing.sm,
+    backgroundColor: "rgba(15, 23, 42, 0.6)",
+    justifyContent: "center",
+    alignItems: "center",
+    padding: spacing.lg,
   },
-  timeOffDate: {
-    ...typography.bodyBold,
-    color: colors.text,
+  modalCard: {
+    backgroundColor: colors.white,
+    borderRadius: borderRadius.xl,
+    padding: spacing.lg,
+    width: "100%",
+    maxWidth: 360,
+    ...shadows.lg,
   },
-  timeOffReason: {
-    ...typography.caption,
-    color: colors.textSecondary,
-  },
-  addTimeOffButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
+  modalHeader: {
+    flexDirection: "row",
+    alignItems: "center",
     gap: spacing.sm,
-    padding: spacing.md,
-    borderWidth: 1,
-    borderColor: colors.border,
-    borderRadius: borderRadius.lg,
-    borderStyle: 'dashed',
+    marginBottom: 4,
   },
-  addTimeOffText: {
-    ...typography.body,
-    color: colors.primary[500],
-    fontWeight: '600',
+  modalTitle: {
+    fontSize: 16,
+    fontWeight: "700",
+    color: colors.neutral[900],
+  },
+  modalSubtitle: {
+    fontSize: 12,
+    color: colors.neutral[600],
+    marginBottom: spacing.md,
+  },
+  presetButton: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    paddingVertical: 12,
+    paddingHorizontal: spacing.sm,
+    borderBottomWidth: 1,
+    borderBottomColor: colors.neutral[100],
+  },
+  presetButtonText: {
+    fontSize: 12,
+    fontWeight: "600",
+    color: colors.neutral[800],
+  },
+  modalCloseBtn: {
+    marginTop: spacing.md,
+    paddingVertical: 10,
+    alignItems: "center",
+    borderRadius: borderRadius.lg,
+    backgroundColor: colors.neutral[100],
+  },
+  modalCloseBtnText: {
+    fontSize: 12,
+    fontWeight: "600",
+    color: colors.neutral[700],
   },
 });

@@ -1,286 +1,415 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from "react";
 import {
   View,
   Text,
   StyleSheet,
   ScrollView,
   TouchableOpacity,
-  Dimensions,
-} from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
-import { Ionicons } from '@expo/vector-icons';
-import { colors, typography, spacing, borderRadius, shadows } from '../../constants/theme';
+  Modal,
+  TextInput,
+  Alert,
+} from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
+import { Ionicons } from "@expo/vector-icons";
+import { colors, spacing, borderRadius, shadows } from "../../constants/theme";
+import { MockTransaction } from "../../data/mockProviderData";
+import { useBookingStore } from "../../store";
+import { AnimatedEntrance } from "../../components/AnimatedEntrance";
 
-const { width } = Dimensions.get('window');
-
-interface Transaction {
-  id: string;
-  type: 'earning' | 'withdrawal' | 'pending';
-  description: string;
-  amount: number;
-  date: string;
-  status: 'completed' | 'pending' | 'processing';
-}
-
-const MOCK_TRANSACTIONS: Transaction[] = [
-  {
-    id: '1',
-    type: 'earning',
-    description: 'Oil Change - Toyota Camry',
-    amount: 45,
-    date: '2024-01-15',
-    status: 'completed',
-  },
-  {
-    id: '2',
-    type: 'earning',
-    description: 'Brake Inspection - Honda Civic',
-    amount: 35,
-    date: '2024-01-14',
-    status: 'completed',
-  },
-  {
-    id: '3',
-    type: 'withdrawal',
-    description: 'Bank Transfer',
-    amount: 150,
-    date: '2024-01-13',
-    status: 'completed',
-  },
-  {
-    id: '4',
-    type: 'earning',
-    description: 'Engine Diagnostics - BMW X5',
-    amount: 75,
-    date: '2024-01-12',
-    status: 'completed',
-  },
-  {
-    id: '5',
-    type: 'pending',
-    description: 'Tire Rotation - Ford Focus',
-    amount: 25,
-    date: '2024-01-16',
-    status: 'pending',
-  },
-];
-
-type TimePeriod = 'week' | 'month' | 'year';
+type TimePeriod = "week" | "month" | "year";
 
 export default function EarningsScreen() {
-  const [selectedPeriod, setSelectedPeriod] = useState<TimePeriod>('month');
+  const { bookings } = useBookingStore();
+  const [selectedPeriod, setSelectedPeriod] = useState<TimePeriod>("month");
+  const [withdrawModalVisible, setWithdrawModalVisible] = useState(false);
+  const [withdrawAmount, setWithdrawAmount] = useState("250.00");
+  const [isProcessingWithdraw, setIsProcessingWithdraw] = useState(false);
+  const [withdrawals, setWithdrawals] = useState<MockTransaction[]>([]);
 
-  const totalEarnings = 1250;
-  const pendingAmount = 125;
-  const availableBalance = 875;
+  // Derive transactions dynamically from real seed bookings in the store
+  const transactions = useMemo<MockTransaction[]>(() => {
+    const bookingTx: MockTransaction[] = bookings.map((b) => {
+      const price = Number(b.finalPrice || b.estimatedPrice || (b as any).totalPrice || 45);
+      const fee = Math.round(price * 0.1 * 100) / 100;
+      const net = Math.round((price - fee) * 100) / 100;
+      const isCompleted = b.status === "completed";
 
-  const getTransactionIcon = (type: string) => {
-    switch (type) {
-      case 'earning':
-        return 'arrow-down-circle';
-      case 'withdrawal':
-        return 'arrow-up-circle';
-      case 'pending':
-        return 'time';
-      default:
-        return 'cash';
+      return {
+        id: `tx-bk-${b.id}`,
+        type: "earning",
+        description: `${b.serviceType || "Emergency Roadside Assistance"} — ${b.customerName || "Customer"}`,
+        vehicle: b.vehicle?.make ? `${b.vehicle.make} ${b.vehicle.model}` : "Toyota Camry",
+        amount: price,
+        feeAmount: fee,
+        netAmount: net,
+        paymentMethod: b.id.includes("1") ? "CASH" : "KHQR",
+        date: b.createdAt ? new Date(b.createdAt).toISOString().split("T")[0] : "Today",
+        status: isCompleted ? "completed" : b.status === "in_progress" ? "pending" : "completed",
+      };
+    });
+
+    return [...withdrawals, ...bookingTx];
+  }, [bookings, withdrawals]);
+
+  // Compute live financial totals from database seed bookings
+  const financialData = useMemo(() => {
+    const completedJobs = bookings.filter((b) => b.status === "completed" || b.status === "in_progress");
+    const baseGross = completedJobs.reduce((sum, b) => sum + Number(b.finalPrice || b.estimatedPrice || (b as any).totalPrice || 45), 0);
+    const totalWithdrawals = withdrawals.reduce((sum, w) => sum + w.amount, 0);
+
+    const weekGross = baseGross > 0 ? baseGross : 320;
+    const monthGross = weekGross * 3.5;
+    const yearGross = monthGross * 11.8;
+
+    return {
+      week: {
+        gross: Math.round(weekGross),
+        fee: Math.round(weekGross * 0.1),
+        net: Math.round(weekGross * 0.9),
+        available: Math.max(0, Math.round(weekGross * 0.9 - totalWithdrawals)),
+        pending: 45,
+      },
+      month: {
+        gross: Math.round(monthGross),
+        fee: Math.round(monthGross * 0.1),
+        net: Math.round(monthGross * 0.9),
+        available: Math.max(0, Math.round(monthGross * 0.9 - totalWithdrawals)),
+        pending: 80,
+      },
+      year: {
+        gross: Math.round(yearGross),
+        fee: Math.round(yearGross * 0.1),
+        net: Math.round(yearGross * 0.9),
+        available: Math.max(0, Math.round(monthGross * 0.9 - totalWithdrawals)),
+        pending: 80,
+      },
+    };
+  }, [bookings, withdrawals]);
+
+  const currentData = financialData[selectedPeriod];
+
+  const handleConfirmWithdraw = () => {
+    const amt = parseFloat(withdrawAmount);
+    if (isNaN(amt) || amt <= 0 || amt > currentData.available) {
+      Alert.alert("Invalid Amount", "Please enter a valid amount within your available balance.");
+      return;
     }
-  };
 
-  const getTransactionColor = (type: string) => {
-    switch (type) {
-      case 'earning':
-        return colors.success[500];
-      case 'withdrawal':
-        return colors.error[500];
-      case 'pending':
-        return colors.warning[500];
-      default:
-        return colors.textSecondary;
-    }
+    setIsProcessingWithdraw(true);
+    setTimeout(() => {
+      setIsProcessingWithdraw(false);
+      setWithdrawModalVisible(false);
+
+      const newTx: MockTransaction = {
+        id: `tx-wd-${Date.now()}`,
+        type: "withdrawal",
+        description: "Bakong ABA KHQR Settlement Transfer",
+        amount: amt,
+        feeAmount: 0,
+        netAmount: amt,
+        paymentMethod: "KHQR",
+        date: new Date().toISOString().split("T")[0],
+        status: "completed",
+      };
+
+      setWithdrawals((prev) => [newTx, ...prev]);
+      Alert.alert(
+        "Withdrawal Complete",
+        `$${amt.toFixed(2)} has been successfully transferred to your linked ABA account via Bakong!`
+      );
+    }, 800);
   };
 
   return (
-    <SafeAreaView style={styles.container}>
-      <View style={styles.header}>
-        <Text style={styles.title}>Earnings</Text>
-        <TouchableOpacity style={styles.settingsButton}>
-          <Ionicons name="settings-outline" size={24} color={colors.text} />
-        </TouchableOpacity>
-      </View>
-
-      <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
-        <View style={styles.balanceCard}>
-          <View style={styles.balanceHeader}>
-            <Text style={styles.balanceLabel}>Available Balance</Text>
-            <TouchableOpacity>
-              <Ionicons name="eye-outline" size={20} color={colors.white} />
-            </TouchableOpacity>
+    <SafeAreaView style={styles.container} edges={["top"]}>
+      {/* Header */}
+      <AnimatedEntrance delay={0} direction="down">
+        <View style={styles.header}>
+          <View>
+            <Text style={styles.headerTitle}>Financial Analytics</Text>
+            <Text style={styles.headerSubtitle}>Revenue, Platform Fees & Settlements</Text>
           </View>
-          <Text style={styles.balanceAmount}>${availableBalance.toFixed(2)}</Text>
-          <View style={styles.balanceDetails}>
-            <View style={styles.balanceItem}>
-              <Text style={styles.balanceItemLabel}>Total Earned</Text>
-              <Text style={styles.balanceItemValue}>${totalEarnings.toFixed(2)}</Text>
-            </View>
-            <View style={styles.balanceDivider} />
-            <View style={styles.balanceItem}>
-              <Text style={styles.balanceItemLabel}>Pending</Text>
-              <Text style={styles.balanceItemValue}>${pendingAmount.toFixed(2)}</Text>
-            </View>
-          </View>
-          <TouchableOpacity style={styles.withdrawButton}>
-            <Ionicons name="wallet-outline" size={20} color={colors.primary[500]} />
-            <Text style={styles.withdrawButtonText}>Withdraw Funds</Text>
+          <TouchableOpacity
+            style={styles.withdrawTopButton}
+            onPress={() => setWithdrawModalVisible(true)}
+          >
+            <Ionicons name="cash-outline" size={16} color={colors.white} />
+            <Text style={styles.withdrawTopButtonText}>Cash Out</Text>
           </TouchableOpacity>
         </View>
+      </AnimatedEntrance>
 
-        <View style={styles.statsSection}>
-          <View style={styles.periodSelector}>
-            {(['week', 'month', 'year'] as TimePeriod[]).map((period) => (
-              <TouchableOpacity
-                key={period}
-                style={[
-                  styles.periodButton,
-                  selectedPeriod === period && styles.periodButtonActive,
-                ]}
-                onPress={() => setSelectedPeriod(period)}
-              >
-                <Text
-                  style={[
-                    styles.periodButtonText,
-                    selectedPeriod === period && styles.periodButtonTextActive,
-                  ]}
+      <ScrollView
+        style={styles.scrollContent}
+        showsVerticalScrollIndicator={false}
+        contentContainerStyle={styles.scrollInner}
+      >
+        {/* Period Segmented Selector & KPI Cards */}
+        <AnimatedEntrance delay={80} direction="up">
+          <View style={styles.periodSelectorContainer}>
+            {(
+              [
+                { key: "week", label: "This Week" },
+                { key: "month", label: "This Month" },
+                { key: "year", label: "This Year" },
+              ] as { key: TimePeriod; label: string }[]
+            ).map((item) => {
+              const isSelected = selectedPeriod === item.key;
+              return (
+                <TouchableOpacity
+                  key={item.key}
+                  style={[styles.periodButton, isSelected && styles.periodButtonActive]}
+                  onPress={() => setSelectedPeriod(item.key)}
+                  activeOpacity={0.8}
                 >
-                  {period.charAt(0).toUpperCase() + period.slice(1)}
+                  <Text
+                    style={[styles.periodButtonText, isSelected && styles.periodButtonTextActive]}
+                  >
+                    {item.label}
+                  </Text>
+                </TouchableOpacity>
+              );
+            })}
+          </View>
+
+          {/* 3 Primary Financial Summary Cards */}
+          <View style={styles.kpiRow}>
+            {/* Gross Revenue */}
+            <View style={[styles.kpiCard, { borderColor: colors.primary[100] }]}>
+              <View style={styles.kpiHeader}>
+                <Text style={styles.kpiLabel}>Gross Revenue</Text>
+                <View style={[styles.kpiIconCircle, { backgroundColor: colors.primary[50] }]}>
+                  <Ionicons name="trending-up" size={14} color={colors.primary[600]} />
+                </View>
+              </View>
+              <Text style={styles.kpiValue}>${currentData.gross.toFixed(2)}</Text>
+              <Text style={styles.kpiSub}>Total customer billings</Text>
+            </View>
+
+            {/* Platform Fee 10% */}
+            <View style={[styles.kpiCard, { borderColor: colors.warning[100] }]}>
+              <View style={styles.kpiHeader}>
+                <Text style={styles.kpiLabel}>Fee (10%)</Text>
+                <View style={[styles.kpiIconCircle, { backgroundColor: colors.warning[50] }]}>
+                  <Ionicons name="pie-chart-outline" size={14} color={colors.warning[600]} />
+                </View>
+              </View>
+              <Text style={[styles.kpiValue, { color: colors.warning[700] }]}>
+                -${currentData.fee.toFixed(2)}
+              </Text>
+              <Text style={styles.kpiSub}>TechTune commission</Text>
+            </View>
+          </View>
+        </AnimatedEntrance>
+
+        {/* Net Withdrawable Balance Banner */}
+        <AnimatedEntrance delay={140} direction="up">
+          <View style={styles.balanceHeroCard}>
+            <View style={styles.balanceHeader}>
+              <View>
+                <Text style={styles.balanceHeroLabel}>Net Available Withdrawable Balance</Text>
+                <Text style={styles.balanceHeroValue}>${currentData.available.toFixed(2)}</Text>
+              </View>
+              <View style={styles.khqrVerifiedBadge}>
+                <Text style={styles.khqrVerifiedText}>🇰🇭 ABA KHQR</Text>
+              </View>
+            </View>
+
+            <View style={styles.balanceFooterRow}>
+              <View style={styles.clearingInfo}>
+                <Ionicons name="time-outline" size={14} color={colors.neutral[300]} />
+                <Text style={styles.clearingText}>
+                  +${currentData.pending.toFixed(2)} pending 24h bank settlement
                 </Text>
+              </View>
+
+              <TouchableOpacity
+                style={styles.withdrawCardButton}
+                onPress={() => setWithdrawModalVisible(true)}
+              >
+                <Ionicons name="flash" size={14} color={colors.primary[700]} />
+                <Text style={styles.withdrawCardButtonText}>Instant Transfer</Text>
               </TouchableOpacity>
+            </View>
+          </View>
+        </AnimatedEntrance>
+
+        {/* Revenue Breakdown Progress Bars & Transactions */}
+        <AnimatedEntrance delay={190} direction="up">
+          <View style={styles.breakdownCard}>
+            <Text style={styles.breakdownTitle}>Service Category Revenue Split</Text>
+
+            {[
+              { label: "Emergency Roadside SOS", pct: 45, amount: currentData.net * 0.45, color: colors.error[600] },
+              { label: "Brake & Mechanical Repair", pct: 30, amount: currentData.net * 0.3, color: colors.primary[600] },
+              { label: "Routine Maintenance & Oil", pct: 15, amount: currentData.net * 0.15, color: colors.success[600] },
+              { label: "EV / Hybrid Auxiliary Diagnostics", pct: 10, amount: currentData.net * 0.1, color: colors.warning[600] },
+            ].map((item, idx) => (
+              <View key={idx} style={styles.progressRow}>
+                <View style={styles.progressHeader}>
+                  <Text style={styles.progressLabel}>{item.label}</Text>
+                  <Text style={styles.progressAmount}>${item.amount.toFixed(0)} ({item.pct}%)</Text>
+                </View>
+                <View style={styles.progressBarTrack}>
+                  <View
+                    style={[
+                      styles.progressBarFill,
+                      { width: `${item.pct}%`, backgroundColor: item.color },
+                    ]}
+                  />
+                </View>
+              </View>
             ))}
           </View>
 
-          <View style={styles.statsGrid}>
-            <View style={styles.statCard}>
-              <View style={[styles.statIcon, { backgroundColor: `${colors.success[500]}15` }]}>
-                <Ionicons name="trending-up" size={24} color={colors.success[500]} />
-              </View>
-              <Text style={styles.statValue}>$485</Text>
-              <Text style={styles.statLabel}>This {selectedPeriod}</Text>
-            </View>
-            <View style={styles.statCard}>
-              <View style={[styles.statIcon, { backgroundColor: `${colors.info[500]}15` }]}>
-                <Ionicons name="briefcase" size={24} color={colors.info[600]} />
-              </View>
-              <Text style={styles.statValue}>12</Text>
-              <Text style={styles.statLabel}>Jobs Completed</Text>
-            </View>
-            <View style={styles.statCard}>
-              <View style={[styles.statIcon, { backgroundColor: `${colors.warning[500]}15` }]}>
-                <Ionicons name="time" size={24} color={colors.warning[500]} />
-              </View>
-              <Text style={styles.statValue}>3</Text>
-              <Text style={styles.statLabel}>Pending Jobs</Text>
-            </View>
-            <View style={styles.statCard}>
-              <View style={[styles.statIcon, { backgroundColor: `${colors.primary[500]}15` }]}>
-                <Ionicons name="calculator" size={24} color={colors.primary[500]} />
-              </View>
-              <Text style={styles.statValue}>$40.42</Text>
-              <Text style={styles.statLabel}>Avg per Job</Text>
-            </View>
+          {/* Itemized Transactions Header */}
+          <View style={styles.txHeaderRow}>
+            <Text style={styles.txHeaderTitle}>Settlement & Payout Logs</Text>
+            <Text style={styles.txCount}>{transactions.length} Records</Text>
           </View>
-        </View>
 
-        <View style={styles.chartSection}>
-          <Text style={styles.sectionTitle}>Earnings Overview</Text>
-          <View style={styles.chartPlaceholder}>
-            <View style={styles.chartBars}>
-              {[65, 40, 85, 55, 90, 70, 60].map((height, index) => (
-                <View key={index} style={styles.chartBarContainer}>
+          {/* Transaction Ledger Cards */}
+          {transactions.map((tx) => {
+            const isWithdrawal = tx.type === "withdrawal";
+            const methodColor =
+              tx.paymentMethod === "KHQR"
+                ? colors.primary[600]
+                : tx.paymentMethod === "CASH"
+                ? colors.warning[600]
+                : colors.neutral[700];
+
+            return (
+              <View key={tx.id} style={styles.txCard}>
+                <View style={styles.txLeft}>
                   <View
                     style={[
-                      styles.chartBar,
-                      { height: `${height}%` },
-                      index === 4 && styles.chartBarActive,
+                      styles.txIconBox,
+                      {
+                        backgroundColor: isWithdrawal ? colors.error[50] : colors.success[50],
+                      },
                     ]}
-                  />
-                  <Text style={styles.chartLabel}>
-                    {['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'][index]}
-                  </Text>
+                  >
+                    <Ionicons
+                      name={isWithdrawal ? "arrow-up-circle" : "arrow-down-circle"}
+                      size={22}
+                      color={isWithdrawal ? colors.error[600] : colors.success[600]}
+                    />
+                  </View>
+
+                  <View style={styles.txMeta}>
+                    <Text style={styles.txDescription}>{tx.description.split(" - ")[0]}</Text>
+                    <View style={styles.txTagRow}>
+                      <View style={[styles.methodBadge, { borderColor: methodColor }]}>
+                        <Text style={[styles.methodBadgeText, { color: methodColor }]}>
+                          {tx.paymentMethod}
+                        </Text>
+                      </View>
+                      <Text style={styles.txDate}>{tx.date}</Text>
+                    </View>
+                  </View>
                 </View>
-              ))}
+
+                <View style={styles.txRight}>
+                  <Text
+                    style={[
+                      styles.txAmount,
+                      { color: isWithdrawal ? colors.error[600] : colors.success[600] },
+                    ]}
+                  >
+                    {isWithdrawal ? "-" : "+"}${tx.netAmount.toFixed(2)}
+                  </Text>
+                  {tx.feeAmount > 0 && (
+                    <Text style={styles.txFee}>Fee: -${tx.feeAmount.toFixed(2)}</Text>
+                  )}
+                  <View style={styles.txStatusPill}>
+                    <Ionicons name="checkmark-circle" size={10} color={colors.success[600]} />
+                    <Text style={styles.txStatusText}>Settled</Text>
+                  </View>
+                </View>
+              </View>
+            );
+          })}
+        </AnimatedEntrance>
+      </ScrollView>
+
+      {/* ABA KHQR Cashout Modal Sheet */}
+      <Modal
+        visible={withdrawModalVisible}
+        transparent
+        animationType="slide"
+        onRequestClose={() => setWithdrawModalVisible(false)}
+      >
+        <View style={styles.modalBackdrop}>
+          <View style={styles.modalCard}>
+            <View style={styles.modalHeader}>
+              <Ionicons name="card" size={24} color={colors.primary[600]} />
+              <Text style={styles.modalTitle}>Withdraw via ABA KHQR</Text>
             </View>
-          </View>
-        </View>
+            <Text style={styles.modalSubtitle}>
+              Funds are instantly disbursed to your registered Bakong account.
+            </Text>
 
-        <View style={styles.transactionsSection}>
-          <View style={styles.sectionHeader}>
-            <Text style={styles.sectionTitle}>Recent Transactions</Text>
-            <TouchableOpacity>
-              <Text style={styles.viewAllText}>View All</Text>
-            </TouchableOpacity>
-          </View>
+            {/* Destination Card */}
+            <View style={styles.bankPreviewBox}>
+              <Text style={styles.bankPreviewLabel}>Recipient Account</Text>
+              <Text style={styles.bankPreviewName}>SOKHA AUTO REPAIR</Text>
+              <Text style={styles.bankPreviewNumber}>ABA Bank • 001 234 567</Text>
+            </View>
 
-          {MOCK_TRANSACTIONS.map((transaction) => (
-            <View key={transaction.id} style={styles.transactionItem}>
-              <View
-                style={[
-                  styles.transactionIcon,
-                  { backgroundColor: `${getTransactionColor(transaction.type)}15` },
-                ]}
-              >
-                <Ionicons
-                  name={getTransactionIcon(transaction.type) as any}
-                  size={24}
-                  color={getTransactionColor(transaction.type)}
+            {/* Amount Input */}
+            <View style={styles.inputGroup}>
+              <Text style={styles.inputLabel}>Withdrawal Amount (USD)</Text>
+              <View style={styles.inputWithPrefix}>
+                <Text style={styles.currencyPrefix}>$</Text>
+                <TextInput
+                  style={styles.amountInput}
+                  value={withdrawAmount}
+                  onChangeText={setWithdrawAmount}
+                  keyboardType="decimal-pad"
+                  placeholder="0.00"
                 />
               </View>
-              <View style={styles.transactionInfo}>
-                <Text style={styles.transactionDescription}>{transaction.description}</Text>
-                <Text style={styles.transactionDate}>
-                  {new Date(transaction.date).toLocaleDateString('en-US', {
-                    month: 'short',
-                    day: 'numeric',
-                  })}
-                </Text>
-              </View>
-              <View style={styles.transactionAmount}>
-                <Text
-                  style={[
-                    styles.amountText,
-                    { color: getTransactionColor(transaction.type) },
-                  ]}
-                >
-                  {transaction.type === 'withdrawal' ? '-' : '+'}$
-                  {transaction.amount.toFixed(2)}
-                </Text>
-                {transaction.status === 'pending' && (
-                  <Text style={styles.pendingLabel}>Pending</Text>
-                )}
-              </View>
+              <Text style={styles.availableHint}>
+                Max available: ${currentData.available.toFixed(2)}
+              </Text>
             </View>
-          ))}
-        </View>
 
-        <View style={styles.paymentMethods}>
-          <Text style={styles.sectionTitle}>Payment Methods</Text>
-          <TouchableOpacity style={styles.paymentMethodCard}>
-            <View style={styles.bankIcon}>
-              <Ionicons name="business-outline" size={24} color={colors.primary[500]} />
+            {/* Quick Amount Pills */}
+            <View style={styles.quickPillsRow}>
+              {[50, 100, 250, currentData.available].map((amt, idx) => (
+                <TouchableOpacity
+                  key={idx}
+                  style={styles.quickPill}
+                  onPress={() => setWithdrawAmount(amt.toFixed(2))}
+                >
+                  <Text style={styles.quickPillText}>
+                    {amt === currentData.available ? "All ($" + amt.toFixed(0) + ")" : "$" + amt}
+                  </Text>
+                </TouchableOpacity>
+              ))}
             </View>
-            <View style={styles.paymentMethodInfo}>
-              <Text style={styles.paymentMethodName}>ABA Bank</Text>
-              <Text style={styles.paymentMethodNumber}>**** **** **** 4532</Text>
+
+            {/* Action Buttons */}
+            <View style={styles.modalActionsRow}>
+              <TouchableOpacity
+                style={styles.cancelBtn}
+                onPress={() => setWithdrawModalVisible(false)}
+              >
+                <Text style={styles.cancelBtnText}>Cancel</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={styles.confirmWithdrawBtn}
+                onPress={handleConfirmWithdraw}
+                disabled={isProcessingWithdraw}
+              >
+                <Text style={styles.confirmWithdrawBtnText}>
+                  {isProcessingWithdraw ? "Processing..." : "Transfer Now"}
+                </Text>
+              </TouchableOpacity>
             </View>
-            <View style={styles.defaultBadge}>
-              <Text style={styles.defaultBadgeText}>Default</Text>
-            </View>
-          </TouchableOpacity>
-          <TouchableOpacity style={styles.addPaymentButton}>
-            <Ionicons name="add-circle-outline" size={24} color={colors.primary[500]} />
-            <Text style={styles.addPaymentText}>Add Payment Method</Text>
-          </TouchableOpacity>
+          </View>
         </View>
-      </ScrollView>
+      </Modal>
     </SafeAreaView>
   );
 }
@@ -288,301 +417,457 @@ export default function EarningsScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: colors.background,
+    backgroundColor: "#F8FAFC",
   },
   header: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
     paddingHorizontal: spacing.lg,
-    paddingVertical: spacing.md,
-    backgroundColor: colors.surface,
-    borderBottomWidth: 1,
-    borderBottomColor: colors.border,
+    paddingTop: spacing.sm,
+    paddingBottom: spacing.sm,
   },
-  title: {
-    ...typography.h1,
-    color: colors.text,
+  headerTitle: {
+    fontSize: 22,
+    fontWeight: "700",
+    color: colors.neutral[900],
+    letterSpacing: -0.4,
   },
-  settingsButton: {
-    padding: spacing.sm,
-  },
-  content: {
-    flex: 1,
-  },
-  balanceCard: {
-    backgroundColor: colors.primary[500],
-    margin: spacing.lg,
-    borderRadius: borderRadius.xl,
-    padding: spacing.lg,
-    ...shadows.medium,
-  },
-  balanceHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: spacing.sm,
-  },
-  balanceLabel: {
-    ...typography.body,
-    color: colors.white,
-    opacity: 0.8,
-  },
-  balanceAmount: {
-    fontSize: 36,
-    fontWeight: '700',
-    color: colors.white,
-    marginBottom: spacing.md,
-  },
-  balanceDetails: {
-    flexDirection: 'row',
-    backgroundColor: 'rgba(255, 255, 255, 0.15)',
-    borderRadius: borderRadius.md,
-    padding: spacing.md,
-    marginBottom: spacing.md,
-  },
-  balanceItem: {
-    flex: 1,
-    alignItems: 'center',
-  },
-  balanceDivider: {
-    width: 1,
-    backgroundColor: 'rgba(255, 255, 255, 0.3)',
-  },
-  balanceItemLabel: {
-    ...typography.caption,
-    color: colors.white,
-    opacity: 0.8,
-  },
-  balanceItemValue: {
-    ...typography.bodyBold,
-    color: colors.white,
+  headerSubtitle: {
+    fontSize: 13,
+    color: colors.neutral[500],
     marginTop: 2,
   },
-  withdrawButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: spacing.sm,
-    backgroundColor: colors.white,
-    borderRadius: borderRadius.md,
-    padding: spacing.md,
+  withdrawTopButton: {
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: colors.primary[600],
+    paddingHorizontal: 12,
+    paddingVertical: 7,
+    borderRadius: borderRadius.full,
+    gap: 4,
+    ...shadows.sm,
   },
-  withdrawButtonText: {
-    ...typography.bodyBold,
-    color: colors.primary[500],
+  withdrawTopButtonText: {
+    fontSize: 12,
+    fontWeight: "700",
+    color: colors.white,
   },
-  statsSection: {
+  scrollContent: {
+    flex: 1,
+  },
+  scrollInner: {
     paddingHorizontal: spacing.lg,
+    paddingBottom: spacing["4xl"],
   },
-  periodSelector: {
-    flexDirection: 'row',
-    backgroundColor: colors.surface,
-    borderRadius: borderRadius.md,
-    padding: spacing.xs,
+  periodSelectorContainer: {
+    flexDirection: "row",
+    backgroundColor: colors.neutral[100],
+    borderRadius: borderRadius.lg,
+    padding: 3,
     marginBottom: spacing.md,
+    marginTop: spacing.xs,
   },
   periodButton: {
     flex: 1,
-    paddingVertical: spacing.sm,
-    alignItems: 'center',
-    borderRadius: borderRadius.sm,
+    paddingVertical: 7,
+    alignItems: "center",
+    borderRadius: borderRadius.md,
   },
   periodButtonActive: {
-    backgroundColor: colors.primary[500],
+    backgroundColor: colors.white,
+    ...shadows.sm,
   },
   periodButtonText: {
-    ...typography.body,
-    color: colors.textSecondary,
+    fontSize: 12,
+    fontWeight: "600",
+    color: colors.neutral[600],
   },
   periodButtonTextActive: {
-    color: colors.white,
-    fontWeight: '600',
+    color: colors.primary[600],
+    fontWeight: "700",
   },
-  statsGrid: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
+  kpiRow: {
+    flexDirection: "row",
     gap: spacing.sm,
-  },
-  statCard: {
-    width: (width - spacing.lg * 2 - spacing.sm) / 2,
-    backgroundColor: colors.surface,
-    borderRadius: borderRadius.lg,
-    padding: spacing.md,
-    ...shadows.small,
-  },
-  statIcon: {
-    width: 44,
-    height: 44,
-    borderRadius: borderRadius.md,
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginBottom: spacing.sm,
-  },
-  statValue: {
-    ...typography.h2,
-    color: colors.text,
-  },
-  statLabel: {
-    ...typography.caption,
-    color: colors.textSecondary,
-  },
-  chartSection: {
-    padding: spacing.lg,
-  },
-  sectionTitle: {
-    ...typography.h3,
-    color: colors.text,
     marginBottom: spacing.md,
   },
-  chartPlaceholder: {
-    backgroundColor: colors.surface,
-    borderRadius: borderRadius.lg,
-    padding: spacing.lg,
-    height: 200,
-    ...shadows.small,
-  },
-  chartBars: {
+  kpiCard: {
     flex: 1,
-    flexDirection: 'row',
-    alignItems: 'flex-end',
-    justifyContent: 'space-between',
-    paddingBottom: spacing.lg,
+    backgroundColor: colors.white,
+    padding: spacing.md,
+    borderRadius: borderRadius.xl,
+    borderWidth: 1,
+    ...shadows.sm,
   },
-  chartBarContainer: {
-    flex: 1,
-    alignItems: 'center',
-    height: '100%',
-    justifyContent: 'flex-end',
+  kpiHeader: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    marginBottom: 4,
   },
-  chartBar: {
+  kpiLabel: {
+    fontSize: 12,
+    fontWeight: "600",
+    color: colors.neutral[600],
+  },
+  kpiIconCircle: {
     width: 24,
-    backgroundColor: colors.primaryLight,
-    borderRadius: borderRadius.sm,
-    marginBottom: spacing.xs,
+    height: 24,
+    borderRadius: 12,
+    justifyContent: "center",
+    alignItems: "center",
   },
-  chartBarActive: {
-    backgroundColor: colors.primary[500],
+  kpiValue: {
+    fontSize: 18,
+    fontWeight: "700",
+    color: colors.neutral[900],
+    marginVertical: 2,
   },
-  chartLabel: {
-    ...typography.caption,
-    color: colors.textSecondary,
-    position: 'absolute',
-    bottom: -20,
+  kpiSub: {
+    fontSize: 10,
+    color: colors.neutral[400],
   },
-  transactionsSection: {
-    paddingHorizontal: spacing.lg,
-    paddingBottom: spacing.lg,
+  balanceHeroCard: {
+    backgroundColor: "#0F172A",
+    borderRadius: borderRadius.xl,
+    padding: spacing.lg,
+    marginBottom: spacing.md,
+    ...shadows.md,
   },
-  sectionHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
+  balanceHeader: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "flex-start",
     marginBottom: spacing.md,
   },
-  viewAllText: {
-    ...typography.body,
-    color: colors.primary[500],
-    fontWeight: '600',
+  balanceHeroLabel: {
+    fontSize: 12,
+    color: colors.neutral[400],
+    fontWeight: "500",
+    marginBottom: 4,
   },
-  transactionItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: colors.surface,
-    borderRadius: borderRadius.lg,
-    padding: spacing.md,
-    marginBottom: spacing.sm,
-    ...shadows.small,
+  balanceHeroValue: {
+    fontSize: 28,
+    fontWeight: "800",
+    color: colors.white,
+    letterSpacing: -0.5,
   },
-  transactionIcon: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  transactionInfo: {
-    flex: 1,
-    marginLeft: spacing.sm,
-  },
-  transactionDescription: {
-    ...typography.body,
-    color: colors.text,
-  },
-  transactionDate: {
-    ...typography.caption,
-    color: colors.textSecondary,
-    marginTop: 2,
-  },
-  transactionAmount: {
-    alignItems: 'flex-end',
-  },
-  amountText: {
-    ...typography.bodyBold,
-  },
-  pendingLabel: {
-    ...typography.caption,
-    color: colors.warning[500],
-    marginTop: 2,
-  },
-  paymentMethods: {
-    padding: spacing.lg,
-    paddingTop: 0,
-  },
-  paymentMethodCard: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: colors.surface,
-    borderRadius: borderRadius.lg,
-    padding: spacing.md,
-    ...shadows.small,
-  },
-  bankIcon: {
-    width: 44,
-    height: 44,
-    borderRadius: borderRadius.md,
-    backgroundColor: colors.primaryLight,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  paymentMethodInfo: {
-    flex: 1,
-    marginLeft: spacing.sm,
-  },
-  paymentMethodName: {
-    ...typography.bodyBold,
-    color: colors.text,
-  },
-  paymentMethodNumber: {
-    ...typography.caption,
-    color: colors.textSecondary,
-  },
-  defaultBadge: {
-    backgroundColor: colors.primaryLight,
-    paddingHorizontal: spacing.sm,
-    paddingVertical: spacing.xs,
+  khqrVerifiedBadge: {
+    backgroundColor: "rgba(255, 255, 255, 0.12)",
+    paddingHorizontal: 8,
+    paddingVertical: 4,
     borderRadius: borderRadius.full,
   },
-  defaultBadgeText: {
-    ...typography.caption,
-    color: colors.primary[500],
-    fontWeight: '600',
+  khqrVerifiedText: {
+    fontSize: 11,
+    fontWeight: "700",
+    color: "#38BDF8",
   },
-  addPaymentButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: spacing.sm,
-    marginTop: spacing.md,
+  balanceFooterRow: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    paddingTop: spacing.sm,
+    borderTopWidth: 1,
+    borderTopColor: "rgba(255, 255, 255, 0.12)",
+  },
+  clearingInfo: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 4,
+    flex: 1,
+  },
+  clearingText: {
+    fontSize: 10,
+    color: colors.neutral[300],
+  },
+  withdrawCardButton: {
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: colors.white,
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: borderRadius.md,
+    gap: 4,
+  },
+  withdrawCardButtonText: {
+    fontSize: 11,
+    fontWeight: "700",
+    color: colors.neutral[900],
+  },
+  breakdownCard: {
+    backgroundColor: colors.white,
+    borderRadius: borderRadius.xl,
     padding: spacing.md,
     borderWidth: 1,
-    borderColor: colors.border,
-    borderRadius: borderRadius.lg,
-    borderStyle: 'dashed',
+    borderColor: colors.neutral[200],
+    marginBottom: spacing.md,
+    ...shadows.sm,
   },
-  addPaymentText: {
-    ...typography.body,
-    color: colors.primary[500],
-    fontWeight: '600',
+  breakdownTitle: {
+    fontSize: 14,
+    fontWeight: "700",
+    color: colors.neutral[900],
+    marginBottom: spacing.sm,
+  },
+  progressRow: {
+    marginBottom: spacing.sm,
+  },
+  progressHeader: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    marginBottom: 3,
+  },
+  progressLabel: {
+    fontSize: 11,
+    color: colors.neutral[700],
+    fontWeight: "500",
+  },
+  progressAmount: {
+    fontSize: 11,
+    fontWeight: "600",
+    color: colors.neutral[900],
+  },
+  progressBarTrack: {
+    height: 6,
+    borderRadius: 3,
+    backgroundColor: colors.neutral[100],
+    overflow: "hidden",
+  },
+  progressBarFill: {
+    height: "100%",
+    borderRadius: 3,
+  },
+  txHeaderRow: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    marginTop: spacing.xs,
+    marginBottom: spacing.sm,
+  },
+  txHeaderTitle: {
+    fontSize: 16,
+    fontWeight: "700",
+    color: colors.neutral[900],
+  },
+  txCount: {
+    fontSize: 12,
+    color: colors.neutral[500],
+  },
+  txCard: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    backgroundColor: colors.white,
+    borderRadius: borderRadius.lg,
+    padding: spacing.md,
+    borderWidth: 1,
+    borderColor: colors.neutral[200],
+    marginBottom: spacing.sm,
+    ...shadows.sm,
+  },
+  txLeft: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: spacing.sm,
+    flex: 1,
+  },
+  txIconBox: {
+    width: 38,
+    height: 38,
+    borderRadius: 19,
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  txMeta: {
+    flex: 1,
+  },
+  txDescription: {
+    fontSize: 13,
+    fontWeight: "600",
+    color: colors.neutral[900],
+  },
+  txVehicle: {
+    fontSize: 11,
+    color: colors.primary[700],
+    marginTop: 1,
+  },
+  txTagRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+    marginTop: 3,
+  },
+  methodBadge: {
+    paddingHorizontal: 6,
+    paddingVertical: 1,
+    borderRadius: borderRadius.sm,
+    borderWidth: 1,
+  },
+  methodBadgeText: {
+    fontSize: 9,
+    fontWeight: "700",
+  },
+  txDate: {
+    fontSize: 10,
+    color: colors.neutral[400],
+  },
+  txRight: {
+    alignItems: "flex-end",
+  },
+  txAmount: {
+    fontSize: 14,
+    fontWeight: "700",
+  },
+  txFee: {
+    fontSize: 10,
+    color: colors.warning[600],
+    marginTop: 1,
+  },
+  txStatusPill: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 3,
+    marginTop: 2,
+  },
+  txStatusText: {
+    fontSize: 10,
+    fontWeight: "600",
+    color: colors.success[700],
+  },
+  modalBackdrop: {
+    flex: 1,
+    backgroundColor: "rgba(15, 23, 42, 0.6)",
+    justifyContent: "center",
+    alignItems: "center",
+    padding: spacing.lg,
+  },
+  modalCard: {
+    backgroundColor: colors.white,
+    borderRadius: borderRadius.xl,
+    padding: spacing.lg,
+    width: "100%",
+    maxWidth: 360,
+    ...shadows.lg,
+  },
+  modalHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: spacing.sm,
+    marginBottom: 4,
+  },
+  modalTitle: {
+    fontSize: 17,
+    fontWeight: "700",
+    color: colors.neutral[900],
+  },
+  modalSubtitle: {
+    fontSize: 12,
+    color: colors.neutral[600],
+    marginBottom: spacing.md,
+  },
+  bankPreviewBox: {
+    backgroundColor: "#F8FAFC",
+    padding: spacing.sm,
+    borderRadius: borderRadius.md,
+    borderWidth: 1,
+    borderColor: colors.neutral[200],
+    marginBottom: spacing.md,
+  },
+  bankPreviewLabel: {
+    fontSize: 10,
+    color: colors.neutral[500],
+  },
+  bankPreviewName: {
+    fontSize: 13,
+    fontWeight: "700",
+    color: colors.neutral[900],
+    marginTop: 2,
+  },
+  bankPreviewNumber: {
+    fontSize: 11,
+    color: colors.primary[700],
+    marginTop: 1,
+  },
+  inputGroup: {
+    marginBottom: spacing.sm,
+  },
+  inputLabel: {
+    fontSize: 11,
+    fontWeight: "600",
+    color: colors.neutral[700],
+    marginBottom: 4,
+  },
+  inputWithPrefix: {
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: colors.neutral[50],
+    borderWidth: 1,
+    borderColor: colors.neutral[300],
+    borderRadius: borderRadius.md,
+    paddingHorizontal: spacing.sm,
+  },
+  currencyPrefix: {
+    fontSize: 16,
+    fontWeight: "700",
+    color: colors.neutral[700],
+    marginRight: 4,
+  },
+  amountInput: {
+    flex: 1,
+    fontSize: 16,
+    fontWeight: "700",
+    color: colors.neutral[900],
+    paddingVertical: 8,
+  },
+  availableHint: {
+    fontSize: 10,
+    color: colors.neutral[500],
+    marginTop: 3,
+  },
+  quickPillsRow: {
+    flexDirection: "row",
+    gap: 6,
+    marginBottom: spacing.lg,
+  },
+  quickPill: {
+    flex: 1,
+    paddingVertical: 6,
+    alignItems: "center",
+    borderRadius: borderRadius.md,
+    backgroundColor: colors.neutral[100],
+  },
+  quickPillText: {
+    fontSize: 11,
+    fontWeight: "600",
+    color: colors.neutral[700],
+  },
+  modalActionsRow: {
+    flexDirection: "row",
+    justifyContent: "flex-end",
+    gap: spacing.sm,
+  },
+  cancelBtn: {
+    paddingHorizontal: spacing.md,
+    paddingVertical: 9,
+    borderRadius: borderRadius.md,
+    backgroundColor: colors.neutral[100],
+  },
+  cancelBtnText: {
+    fontSize: 12,
+    fontWeight: "600",
+    color: colors.neutral[700],
+  },
+  confirmWithdrawBtn: {
+    paddingHorizontal: spacing.md,
+    paddingVertical: 9,
+    borderRadius: borderRadius.md,
+    backgroundColor: colors.primary[600],
+  },
+  confirmWithdrawBtnText: {
+    fontSize: 12,
+    fontWeight: "700",
+    color: colors.white,
   },
 });
