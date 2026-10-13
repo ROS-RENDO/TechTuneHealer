@@ -14,6 +14,8 @@ jobs:
     name: Build Unsigned iOS IPA (ARM64 Physical Device)
     runs-on: macos-15
     timeout-minutes: 45
+    permissions:
+      contents: write
 
     steps:
       - name: Checkout Repository
