@@ -8,7 +8,10 @@
     "android": "expo start --android",
     "ios": "expo start --ios",
     "web": "expo start --web",
-    "lint": "expo lint"
+    "lint": "expo lint",
+    "test:qa": "npm --prefix backend run test:qa",
+    "test:playwright": "npm --prefix backend run test:playwright",
+    "test:playwright:report": "npm --prefix backend run test:playwright:report"
   },
   "dependencies": {
     "@expo/vector-icons": "^15.0.3",

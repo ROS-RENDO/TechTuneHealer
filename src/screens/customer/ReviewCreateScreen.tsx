@@ -13,6 +13,7 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { useNavigation, useRoute } from "@react-navigation/native";
 import { Ionicons } from "@expo/vector-icons";
 import { useBookingStore } from "../../store";
+import { useTranslation } from "../../store/languageStore";
 import { AnimatedEntrance } from "../../components";
 import { colors, spacing, shadows } from "../../constants/theme";
 import type { CustomerStackScreenProps } from "../../navigation/types";
@@ -21,6 +22,7 @@ export function ReviewCreateScreen() {
   const navigation = useNavigation<CustomerStackScreenProps<"ReviewCreate">["navigation"]>();
   const route = useRoute<CustomerStackScreenProps<"ReviewCreate">["route"]>();
   const { bookingId } = route.params;
+  const { t, isKhmer } = useTranslation();
 
   const { bookings } = useBookingStore();
   const booking = bookings.find((b) => b.id === bookingId);
@@ -41,12 +43,23 @@ export function ReviewCreateScreen() {
             <Ionicons name="arrow-back" size={24} color={colors.neutral[900]} />
           </TouchableOpacity>
         </View>
-        <Text style={{ textAlign: "center", marginTop: 40 }}>Booking not found</Text>
+        <Text style={{ textAlign: "center", marginTop: 40 }}>
+          {isKhmer ? "រកមិនឃើញការកក់នេះទេ" : "Booking not found"}
+        </Text>
       </SafeAreaView>
     );
   }
 
-  const providerName = booking.provider?.businessName || booking.provider?.name || "the provider";
+  const providerName = booking.provider?.businessName || booking.provider?.name || (isKhmer ? "ជាងជំនាញ" : "the provider");
+
+  const getRatingDescription = () => {
+    if (rating === 0) return isKhmer ? "ចុចផ្កាយដើម្បីដាក់ពិន្ទុ" : "Tap a star to rate";
+    if (rating === 1) return isKhmer ? "អន់ណាស់" : "Terrible";
+    if (rating === 2) return isKhmer ? "មិនសូវល្អ" : "Poor";
+    if (rating === 3) return isKhmer ? "មធ្យម" : "Fair";
+    if (rating === 4) return isKhmer ? "ល្អ" : "Good";
+    return isKhmer ? "ល្អឥតខ្ចោះ" : "Excellent";
+  };
 
   return (
     <SafeAreaView style={styles.container} edges={["top", "bottom"]}>
@@ -55,7 +68,9 @@ export function ReviewCreateScreen() {
           <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
             <Ionicons name="arrow-back" size={24} color={colors.neutral[900]} />
           </TouchableOpacity>
-          <Text style={styles.headerTitle}>Leave a Review</Text>
+          <Text style={styles.headerTitle}>
+            {isKhmer ? "ការវាយតម្លៃសេវាកម្ម" : "Leave a Review"}
+          </Text>
           <View style={{ width: 44 }} />
         </View>
       </AnimatedEntrance>
@@ -73,13 +88,17 @@ export function ReviewCreateScreen() {
                 <Text style={styles.providerAvatarText}>{providerName.charAt(0).toUpperCase()}</Text>
               </View>
               <Text style={styles.providerName}>{providerName}</Text>
-              <Text style={styles.serviceText}>For {booking.serviceType}</Text>
+              <Text style={styles.serviceText}>
+                {isKhmer ? `សម្រាប់សេវាកម្ម ${booking.serviceType}` : `For ${booking.serviceType}`}
+              </Text>
             </View>
           </AnimatedEntrance>
 
           <AnimatedEntrance delay={100} direction="up">
             <View style={styles.ratingSection}>
-              <Text style={styles.ratingTitle}>How was your experience?</Text>
+              <Text style={styles.ratingTitle}>
+                {isKhmer ? "តើបទពិសោធន៍របស់អ្នកយ៉ាងណាដែរ?" : "How was your experience?"}
+              </Text>
               <View style={styles.starsContainer}>
                 {[1, 2, 3, 4, 5].map((star) => (
                   <TouchableOpacity
@@ -96,22 +115,23 @@ export function ReviewCreateScreen() {
                 ))}
               </View>
               <Text style={styles.ratingDescription}>
-                {rating === 0 && "Tap a star to rate"}
-                {rating === 1 && "Terrible"}
-                {rating === 2 && "Poor"}
-                {rating === 3 && "Fair"}
-                {rating === 4 && "Good"}
-                {rating === 5 && "Excellent"}
+                {getRatingDescription()}
               </Text>
             </View>
           </AnimatedEntrance>
 
           <AnimatedEntrance delay={140} direction="up">
             <View style={styles.inputSection}>
-              <Text style={styles.inputTitle}>Share your thoughts (Optional)</Text>
+              <Text style={styles.inputTitle}>
+                {isKhmer ? "មតិយោបល់បន្ថែម (មិនបង្ខំ)" : "Share your thoughts (Optional)"}
+              </Text>
               <TextInput
                 style={styles.inputArea}
-                placeholder="What did you like or dislike? How was the service?"
+                placeholder={
+                  isKhmer
+                    ? "តើអ្នកពេញចិត្តអ្វីខ្លះ? តើសេវាកម្មជាងយ៉ាងណាដែរ?"
+                    : "What did you like or dislike? How was the service?"
+                }
                 placeholderTextColor={colors.neutral[400]}
                 multiline
                 textAlignVertical="top"
@@ -135,7 +155,9 @@ export function ReviewCreateScreen() {
             onPress={handleSubmit}
             disabled={rating === 0}
           >
-            <Text style={styles.submitButtonText}>Submit Review</Text>
+            <Text style={styles.submitButtonText}>
+              {isKhmer ? "បញ្ជូនការវាយតម្លៃ" : "Submit Review"}
+            </Text>
           </TouchableOpacity>
         </View>
       </AnimatedEntrance>

@@ -19,20 +19,23 @@ export default function Card({
 }: CardProps) {
   const getCardStyle = (): ViewStyle => {
     const baseStyle: ViewStyle = {
-      backgroundColor: colors.surface,
-      borderRadius: borderRadius.lg,
+      backgroundColor: colors.white,
+      borderRadius: borderRadius.xl,
+      borderWidth: 1,
+      borderColor: '#F1F5F9',
     };
 
     switch (variant) {
       case 'outlined':
-        baseStyle.borderWidth = 1;
+        baseStyle.borderWidth = 1.5;
         baseStyle.borderColor = colors.border;
         break;
       case 'elevated':
-        Object.assign(baseStyle, shadows.medium);
+        Object.assign(baseStyle, shadows.md);
+        baseStyle.borderColor = 'rgba(0,0,0,0.04)';
         break;
       default:
-        Object.assign(baseStyle, shadows.small);
+        Object.assign(baseStyle, shadows.sm);
     }
 
     switch (padding) {
@@ -43,10 +46,10 @@ export default function Card({
         baseStyle.padding = spacing.sm;
         break;
       case 'large':
-        baseStyle.padding = spacing.lg;
+        baseStyle.padding = spacing.xl;
         break;
       default:
-        baseStyle.padding = spacing.md;
+        baseStyle.padding = spacing.lg;
     }
 
     return baseStyle;
@@ -57,7 +60,7 @@ export default function Card({
       <TouchableOpacity
         style={[getCardStyle(), style]}
         onPress={onPress}
-        activeOpacity={0.8}
+        activeOpacity={0.74}
       >
         {children}
       </TouchableOpacity>

@@ -1,3 +1,4 @@
+import { Platform } from "react-native";
 import { NavigationContainer, NavigationIndependentTree } from "@react-navigation/native";
 import { createNativeStackNavigator } from "@react-navigation/native-stack";
 import { createBottomTabNavigator } from "@react-navigation/bottom-tabs";
@@ -60,9 +61,10 @@ function ProviderTabs() {
         tabBarStyle: {
           borderTopWidth: 1,
           borderTopColor: colors.neutral[200],
+          backgroundColor: colors.white,
           paddingTop: 8,
-          paddingBottom: 8,
-          height: 60,
+          paddingBottom: Platform.OS === "ios" ? 28 : 8,
+          height: Platform.OS === "ios" ? 84 : 64,
         },
         tabBarLabelStyle: {
           fontSize: 12,

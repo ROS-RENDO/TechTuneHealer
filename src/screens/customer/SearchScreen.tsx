@@ -49,13 +49,13 @@ export function SearchScreen() {
 
   const categories = [
     { id: "all", label: t("all"), icon: "apps" },
-    { id: "fuel", label: `${t("gasFuelStations")} ⛽`, icon: "flame" },
-    { id: "ev", label: `${t("evChargingStations")} ⚡`, icon: "flash" },
     { id: "emergency", label: t("breakdownRescue"), icon: "warning" },
     { id: "maintenance", label: t("oilLube"), icon: "construct" },
     { id: "repair", label: t("diagnosticsTitle"), icon: "build" },
-    { id: "tires", label: t("tiresWheels"), icon: "disc" },
     { id: "battery", label: t("batteryCare"), icon: "battery-charging" },
+    { id: "tires", label: t("tiresWheels"), icon: "disc" },
+    { id: "fuel", label: `${t("gasFuelStations")} ⛽`, icon: "flame" },
+    { id: "ev", label: `${t("evChargingStations")} ⚡`, icon: "flash" },
   ];
 
   const [searchQuery, setSearchQuery] = useState("");
@@ -63,6 +63,7 @@ export function SearchScreen() {
     route?.params?.category || "all"
   );
   const [selectedStation, setSelectedStation] = useState<EnergyStation | null>(null);
+  const [stationSubTab, setStationSubTab] = useState<"stations" | "mechanics">("stations");
   // Default to list view on web, map on native platforms
   const [viewMode, setViewMode] = useState<"map" | "list">(
     Platform.OS === "web" ? "list" : "map",
@@ -72,13 +73,11 @@ export function SearchScreen() {
     if (route?.params?.category) {
       setSelectedCategory(route.params.category);
       setFilters({
-        category:
-          route.params.category === "all" ||
-          route.params.category === "fuel" ||
-          route.params.category === "ev"
-            ? undefined
-            : route.params.category,
+        category: route.params.category === "all" ? undefined : route.params.category,
       });
+      if (route.params.category === "fuel" || route.params.category === "ev") {
+        setStationSubTab("stations");
+      }
     }
     if (route?.params?.viewMode) {
       setViewMode(route.params.viewMode);
@@ -91,7 +90,7 @@ export function SearchScreen() {
   useEffect(() => {
     const loc = currentLocation || { latitude: 11.5564, longitude: 104.9282 };
     searchProviders(loc).catch(() => {});
-  }, [currentLocation]);
+  }, [currentLocation, selectedCategory]);
 
   const isFuelCategory = selectedCategory === "fuel";
   const isEvCategory = selectedCategory === "ev";
@@ -112,31 +111,154 @@ export function SearchScreen() {
     return matchesSearch && matchesType;
   });
 
-  const filteredProviders = (isStationCategory ? [] : providers).filter((provider) => {
-    const name = provider.businessName || "";
-    const addr = provider.address || "";
-    const q = searchQuery.toLowerCase();
-    const matchesSearch =
-      name.toLowerCase().includes(q) || addr.toLowerCase().includes(q);
-    const matchesCategory =
-      selectedCategory === "all" ||
-      (provider.services &&
-        provider.services.some(
-          (s: any) =>
-            s.category === selectedCategory ||
-            s.name?.toLowerCase().includes(selectedCategory)
-        ));
-    return matchesSearch && matchesCategory;
+  const filteredProviders = providers.filter((provider) => {
+    const name = (provider.businessName || "").toLowerCase();
+    const addr = (provider.address || "").toLowerCase();
+    const q = searchQuery.toLowerCase().trim();
+    const matchesSearch = !q || name.includes(q) || addr.includes(q);
+    if (!matchesSearch) return false;
+
+    if (selectedCategory === "all") return true;
+
+    // 1. Emergency Roadside Rescue
+    if (selectedCategory === "emergency") {
+      const isEmerg = (provider as any).isEmergency || (provider as any).emergency;
+      const hasEmergService =
+        provider.services &&
+        provider.services.some((s: any) => {
+          const sn = (s.name || "").toLowerCase();
+          const sd = (s.description || "").toLowerCase();
+          return (
+            sn.includes("tow") ||
+            sn.includes("rescue") ||
+            sn.includes("emergency") ||
+            sn.includes("roadside") ||
+            sn.includes("jump") ||
+            sd.includes("emergency") ||
+            sd.includes("rescue")
+          );
+        });
+      return isEmerg || hasEmergService;
+    }
+
+    // 2. Battery Care
+    if (selectedCategory === "battery") {
+      return (
+        provider.services &&
+        provider.services.some((s: any) => {
+          const sn = (s.name || "").toLowerCase();
+          return (
+            sn.includes("battery") ||
+            sn.includes("jump") ||
+            sn.includes("alternator") ||
+            sn.includes("starter")
+          );
+        })
+      );
+    }
+
+    // 3. Tires & Wheels
+    if (selectedCategory === "tires") {
+      return (
+        provider.services &&
+        provider.services.some((s: any) => {
+          const sn = (s.name || "").toLowerCase();
+          return (
+            sn.includes("tire") ||
+            sn.includes("wheel") ||
+            sn.includes("puncture") ||
+            sn.includes("patch") ||
+            sn.includes("rotation")
+          );
+        })
+      );
+    }
+
+    // 4. Maintenance / Oil & Lube
+    if (selectedCategory === "maintenance") {
+      return (
+        provider.services &&
+        provider.services.some((s: any) => {
+          const sn = (s.name || "").toLowerCase();
+          return (
+            sn.includes("oil") ||
+            sn.includes("filter") ||
+            sn.includes("tune") ||
+            sn.includes("fluid") ||
+            sn.includes("lube") ||
+            sn.includes("inspection")
+          );
+        })
+      );
+    }
+
+    // 5. Fuel & Gas (Emergency fuel delivery & roadside assistance)
+    if (selectedCategory === "fuel") {
+      const isEmerg = (provider as any).isEmergency || (provider as any).emergency;
+      const hasFuelService =
+        provider.services &&
+        provider.services.some((s: any) => {
+          const sn = (s.name || "").toLowerCase();
+          return sn.includes("fuel") || sn.includes("gas") || sn.includes("pump");
+        });
+      return hasFuelService || isEmerg;
+    }
+
+    // 6. EV & Charging (Certified EV & Hybrid repairers)
+    if (selectedCategory === "ev") {
+      const isEvShop = name.includes("ev") || name.includes("hybrid");
+      const hasEvService =
+        provider.services &&
+        provider.services.some((s: any) => {
+          const sn = (s.name || "").toLowerCase();
+          return (
+            sn.includes("ev") ||
+            sn.includes("hybrid") ||
+            sn.includes("inverter") ||
+            sn.includes("battery")
+          );
+        });
+      return isEvShop || hasEvService;
+    }
+
+    // 7. Repair & Diagnostics
+    if (selectedCategory === "repair") {
+      return (
+        provider.services &&
+        provider.services.some((s: any) => {
+          const sn = (s.name || "").toLowerCase();
+          return (
+            sn.includes("repair") ||
+            sn.includes("brake") ||
+            sn.includes("engine") ||
+            sn.includes("tune") ||
+            sn.includes("diagnostic") ||
+            sn.includes("exhaust") ||
+            sn.includes("transmission")
+          );
+        })
+      );
+    }
+
+    // Fallback: match category against any service name or description
+    return (
+      provider.services &&
+      provider.services.some((s: any) => {
+        const sn = (s.name || "").toLowerCase();
+        const sd = (s.description || "").toLowerCase();
+        return sn.includes(selectedCategory) || sd.includes(selectedCategory);
+      })
+    );
   });
 
   const handleCategorySelect = (categoryId: string) => {
     setSelectedCategory(categoryId);
     setSelectedStation(null);
+    if (categoryId === "fuel" || categoryId === "ev") {
+      setStationSubTab("stations");
+    }
     setFilters({
-      category:
-        categoryId === "all" || categoryId === "fuel" || categoryId === "ev"
-          ? undefined
-          : categoryId,
+      category: categoryId === "all" ? undefined : categoryId,
     });
   };
 
@@ -330,38 +452,37 @@ export function SearchScreen() {
               showsMyLocationButton={false}
               loadingEnabled={true}
             >
-              {/* Mechanic Providers */}
-              {!isStationCategory &&
-                filteredProviders.map((provider) => {
-                  const lat = provider.location?.latitude ?? (provider as any).lat;
-                  const lng = provider.location?.longitude ?? (provider as any).lng;
-                  if (lat == null || lng == null || isNaN(Number(lat)) || isNaN(Number(lng))) {
-                    return null;
-                  }
-                  return (
-                    <Marker
-                      key={`provider-${provider.id}`}
-                      coordinate={{
-                        latitude: Number(lat),
-                        longitude: Number(lng),
-                      }}
-                      title={provider.businessName || "Mechanic"}
-                      description={provider.address || ""}
-                      pinColor={colors.primary[600]}
-                      tracksViewChanges={false}
-                      onPress={() => {
-                        setSelectedStation(null);
-                        navigation.navigate("ProviderDetail", {
-                          providerId: provider.id,
-                        } as any);
-                      }}
-                    >
-                      <View style={styles.customMarker}>
-                        <Ionicons name="construct" size={16} color={colors.white} />
-                      </View>
-                    </Marker>
-                  );
-                })}
+              {/* Mechanic Providers (Always mapped so motorists never lose mechanics) */}
+              {filteredProviders.map((provider) => {
+                const lat = provider.location?.latitude ?? (provider as any).latitude ?? (provider as any).lat;
+                const lng = provider.location?.longitude ?? (provider as any).longitude ?? (provider as any).lng;
+                if (lat == null || lng == null || isNaN(Number(lat)) || isNaN(Number(lng))) {
+                  return null;
+                }
+                return (
+                  <Marker
+                    key={`provider-${provider.id}`}
+                    coordinate={{
+                      latitude: Number(lat),
+                      longitude: Number(lng),
+                    }}
+                    title={provider.businessName || "Mechanic"}
+                    description={provider.address || ""}
+                    pinColor={colors.primary[600]}
+                    tracksViewChanges={false}
+                    onPress={() => {
+                      setSelectedStation(null);
+                      navigation.navigate("ProviderDetail", {
+                        providerId: provider.id,
+                      } as any);
+                    }}
+                  >
+                    <View style={styles.customMarker}>
+                      <Ionicons name="construct" size={16} color={colors.white} />
+                    </View>
+                  </Marker>
+                );
+              })}
 
               {/* Fuel & EV Energy Stations */}
               {filteredStations.map((station) => {
@@ -426,34 +547,49 @@ export function SearchScreen() {
                 <FlatList
                   horizontal
                   showsHorizontalScrollIndicator={false}
-                  data={filteredStations}
-                  keyExtractor={(item) => item.id}
+                  data={[
+                    ...filteredStations.map((s) => ({ cardType: "station" as const, id: `station-${s.id}`, data: s })),
+                    ...filteredProviders.map((p) => ({ cardType: "provider" as const, id: `provider-${p.id}`, data: p })),
+                  ]}
+                  keyExtractor={(entry) => entry.id}
                   contentContainerStyle={styles.providerCardsListMap}
-                  renderItem={({ item }) => (
-                    <StationMapCard
-                      station={item}
-                      distance={getFormattedDistance(currentLocation, item.location)}
-                      onPress={() => {
-                        setSelectedStation(item);
-                        mapRef.current?.animateToRegion(
-                          {
-                            latitude: item.location.latitude - 0.015,
-                            longitude: item.location.longitude,
-                            latitudeDelta: 0.08,
-                            longitudeDelta: 0.08,
-                          },
-                          450
-                        );
-                      }}
-                      onNavigate={() =>
-                        openMaps(
-                          item.location.latitude,
-                          item.location.longitude,
-                          item.name
-                        )
-                      }
-                    />
-                  )}
+                  renderItem={({ item: entry }) =>
+                    entry.cardType === "station" ? (
+                      <StationMapCard
+                        station={entry.data as EnergyStation}
+                        distance={getFormattedDistance(currentLocation, (entry.data as EnergyStation).location)}
+                        onPress={() => {
+                          setSelectedStation(entry.data as EnergyStation);
+                          mapRef.current?.animateToRegion(
+                            {
+                              latitude: (entry.data as EnergyStation).location.latitude - 0.015,
+                              longitude: (entry.data as EnergyStation).location.longitude,
+                              latitudeDelta: 0.08,
+                              longitudeDelta: 0.08,
+                            },
+                            450
+                          );
+                        }}
+                        onNavigate={() =>
+                          openMaps(
+                            (entry.data as EnergyStation).location.latitude,
+                            (entry.data as EnergyStation).location.longitude,
+                            (entry.data as EnergyStation).name
+                          )
+                        }
+                      />
+                    ) : (
+                      <ProviderMapCard
+                        provider={entry.data as ServiceProvider}
+                        distance={getFormattedDistance(currentLocation, (entry.data as ServiceProvider).location)}
+                        onPress={() =>
+                          navigation.navigate("ProviderDetail", {
+                            providerId: (entry.data as ServiceProvider).id,
+                          } as any)
+                        }
+                      />
+                    )
+                  }
                 />
               ) : (
                 <FlatList
@@ -478,41 +614,149 @@ export function SearchScreen() {
             </View>
           </View>
         ) : isStationCategory ? (
-          <FlatList
-            data={filteredStations}
-            keyExtractor={(item) => item.id}
-            contentContainerStyle={styles.listContent}
-            renderItem={({ item }) => (
-              <StationListCard
-                station={item}
-                distance={getFormattedDistance(currentLocation, item.location)}
-                onNavigate={() =>
-                  openMaps(
-                    item.location.latitude,
-                    item.location.longitude,
-                    item.name
-                  )
+          <View style={{ flex: 1 }}>
+            {/* Sub-tab pills for switching between Stations and Mechanics */}
+            <View style={styles.stationSubTabRow}>
+              <TouchableOpacity
+                style={[
+                  styles.subTabPill,
+                  stationSubTab === "stations" && styles.subTabPillActive,
+                ]}
+                onPress={() => setStationSubTab("stations")}
+                activeOpacity={0.8}
+              >
+                <Ionicons
+                  name={isFuelCategory ? "flame" : "flash"}
+                  size={14}
+                  color={
+                    stationSubTab === "stations" ? colors.white : colors.neutral[600]
+                  }
+                />
+                <Text
+                  style={[
+                    styles.subTabPillText,
+                    stationSubTab === "stations" && styles.subTabPillTextActive,
+                  ]}
+                >
+                  {isFuelCategory ? t("gasFuelStations") : t("evChargingStations")} (
+                  {filteredStations.length})
+                </Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[
+                  styles.subTabPill,
+                  stationSubTab === "mechanics" && styles.subTabPillActive,
+                ]}
+                onPress={() => setStationSubTab("mechanics")}
+                activeOpacity={0.8}
+              >
+                <Ionicons
+                  name="construct"
+                  size={14}
+                  color={
+                    stationSubTab === "mechanics" ? colors.white : colors.neutral[600]
+                  }
+                />
+                <Text
+                  style={[
+                    styles.subTabPillText,
+                    stationSubTab === "mechanics" && styles.subTabPillTextActive,
+                  ]}
+                >
+                  {t("mechanicsNearby")} ({filteredProviders.length})
+                </Text>
+              </TouchableOpacity>
+            </View>
+
+            {stationSubTab === "stations" ? (
+              <FlatList
+                data={filteredStations}
+                keyExtractor={(item) => item.id}
+                contentContainerStyle={styles.listContent}
+                renderItem={({ item }) => (
+                  <StationListCard
+                    station={item}
+                    distance={getFormattedDistance(currentLocation, item.location)}
+                    onNavigate={() =>
+                      openMaps(
+                        item.location.latitude,
+                        item.location.longitude,
+                        item.name
+                      )
+                    }
+                  />
+                )}
+                ListFooterComponent={
+                  filteredProviders.length > 0 ? (
+                    <TouchableOpacity
+                      style={styles.mechanicsFooterBanner}
+                      onPress={() => setStationSubTab("mechanics")}
+                      activeOpacity={0.85}
+                    >
+                      <View style={styles.mechanicsFooterIcon}>
+                        <Ionicons name="construct" size={18} color="#2563EB" />
+                      </View>
+                      <View style={{ flex: 1 }}>
+                        <Text style={styles.mechanicsFooterTitle}>
+                          {isFuelCategory
+                            ? "Need Mobile Fuel Delivery or Rescue?"
+                            : "Need Certified EV & Hybrid Service?"}
+                        </Text>
+                        <Text style={styles.mechanicsFooterSub}>
+                          {filteredProviders.length} mechanics available nearby • Tap to view →
+                        </Text>
+                      </View>
+                    </TouchableOpacity>
+                  ) : null
+                }
+                ListEmptyComponent={
+                  <View style={styles.emptyState}>
+                    <View style={styles.emptyIconCircle}>
+                      <Ionicons
+                        name={isFuelCategory ? "flame" : "flash"}
+                        size={32}
+                        color={colors.neutral[400]}
+                      />
+                    </View>
+                    <Text style={styles.emptyStateTitle}>
+                      {isFuelCategory ? "No fuel stations found" : "No EV chargers found"}
+                    </Text>
+                    <Text style={styles.emptyStateSubtitle}>
+                      Try clearing your search query.
+                    </Text>
+                  </View>
+                }
+              />
+            ) : (
+              <FlatList
+                data={filteredProviders}
+                keyExtractor={(item) => item.id}
+                contentContainerStyle={styles.listContent}
+                renderItem={({ item }) => (
+                  <ProviderListCard
+                    provider={item}
+                    distance={getFormattedDistance(currentLocation, item.location)}
+                    onPress={() =>
+                      navigation.navigate("ProviderDetail", {
+                        providerId: item.id,
+                      } as any)
+                    }
+                  />
+                )}
+                ListEmptyComponent={
+                  <View style={styles.emptyState}>
+                    <View style={styles.emptyIconCircle}>
+                      <Ionicons name="construct-outline" size={32} color={colors.neutral[400]} />
+                    </View>
+                    <Text style={styles.emptyStateTitle}>No mechanics found</Text>
+                    <Text style={styles.emptyStateSubtitle}>
+                      Tap the All category to browse all available mechanics.
+                    </Text>
+                  </View>
                 }
               />
             )}
-            ListEmptyComponent={
-              <View style={styles.emptyState}>
-                <View style={styles.emptyIconCircle}>
-                  <Ionicons
-                    name={isFuelCategory ? "flame" : "flash"}
-                    size={32}
-                    color={colors.neutral[400]}
-                  />
-                </View>
-                <Text style={styles.emptyStateTitle}>
-                  {isFuelCategory ? "No fuel stations found" : "No EV chargers found"}
-                </Text>
-                <Text style={styles.emptyStateSubtitle}>
-                  Try clearing your search query.
-                </Text>
-              </View>
-            }
-          />
+          </View>
         ) : (
           <FlatList
             data={filteredProviders}
@@ -1714,5 +1958,66 @@ const styles = StyleSheet.create({
     fontSize: 11,
     fontWeight: "600",
     color: colors.neutral[600],
+  },
+  stationSubTabRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+    paddingHorizontal: spacing.lg,
+    paddingVertical: spacing.sm,
+    backgroundColor: colors.white,
+    borderBottomWidth: 1,
+    borderBottomColor: "#E2E8F0",
+  },
+  subTabPill: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+    paddingHorizontal: 12,
+    paddingVertical: 7,
+    borderRadius: 20,
+    backgroundColor: "#F1F5F9",
+  },
+  subTabPillActive: {
+    backgroundColor: colors.primary[600],
+  },
+  subTabPillText: {
+    fontSize: 12,
+    fontWeight: "700",
+    color: colors.neutral[700],
+  },
+  subTabPillTextActive: {
+    color: colors.white,
+  },
+  mechanicsFooterBanner: {
+    marginTop: spacing.md,
+    marginBottom: spacing.xl,
+    backgroundColor: "#EFF6FF",
+    borderWidth: 1.5,
+    borderColor: "#BFDBFE",
+    borderRadius: 16,
+    padding: spacing.md,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 12,
+  },
+  mechanicsFooterIcon: {
+    width: 38,
+    height: 38,
+    borderRadius: 12,
+    backgroundColor: "#DBEAFE",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  mechanicsFooterTitle: {
+    fontSize: 13,
+    fontWeight: "800",
+    color: "#1E293B",
+  },
+  mechanicsFooterSub: {
+    fontSize: 11,
+    fontWeight: "600",
+    color: "#2563EB",
+    marginTop: 2,
   },
 });

@@ -8,7 +8,10 @@
     "build": "tsc",
     "start": "node dist/index.js",
     "studio": "prisma studio",
-    "seed": "tsx prisma/seed.ts"
+    "seed": "tsx prisma/seed.ts",
+    "test:qa": "tsx tests/qa-automated-suite.test.ts",
+    "test:playwright": "playwright test",
+    "test:playwright:report": "playwright show-report"
   },
   "keywords": [],
   "author": "",
@@ -28,6 +31,7 @@
     "socket.io": "^4.8.3"
   },
   "devDependencies": {
+    "@playwright/test": "^1.63.0",
     "@types/bcryptjs": "^2.4.6",
     "@types/cors": "^2.8.19",
     "@types/express": "^5.0.6",

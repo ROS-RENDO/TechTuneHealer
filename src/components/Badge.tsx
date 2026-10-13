@@ -68,15 +68,19 @@ const styles = StyleSheet.create({
   container: {
     borderRadius: borderRadius.full,
     alignSelf: 'flex-start',
+    borderWidth: 1,
+    borderColor: 'rgba(0,0,0,0.05)',
   },
   text: {
-    ...typography.caption,
-    fontWeight: '600',
+    fontSize: 12,
+    fontWeight: '700',
+    letterSpacing: 0.2,
     textTransform: 'capitalize',
   },
   textSmall: {
     fontSize: 10,
-    fontWeight: '600',
+    fontWeight: '700',
+    letterSpacing: 0.3,
     textTransform: 'capitalize',
   },
 });

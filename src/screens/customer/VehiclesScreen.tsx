@@ -13,6 +13,7 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { useNavigation } from "@react-navigation/native";
 import { Ionicons } from "@expo/vector-icons";
 import { useVehicleStore, DEFAULT_PRESET_VEHICLES } from "../../store/vehicleStore";
+import { useTranslation } from "../../store/languageStore";
 import type { CustomerStackScreenProps } from "../../navigation/types";
 import type { Vehicle } from "../../types";
 import { colors, spacing, borderRadius, shadows } from "../../constants/theme";
@@ -21,6 +22,7 @@ import { AnimatedEntrance } from "../../components";
 export function VehiclesScreen() {
   const navigation =
     useNavigation<CustomerStackScreenProps<"Vehicles">["navigation"]>();
+  const { t, isKhmer } = useTranslation();
   const {
     vehicles,
     activeVehicleId,
@@ -46,9 +48,11 @@ export function VehiclesScreen() {
   const handleSetActive = async (vehicle: Vehicle) => {
     await setActiveVehicleId(vehicle.id);
     Alert.alert(
-      "Active Vehicle Updated",
-      `${vehicle.year} ${vehicle.make} ${vehicle.model} is now your primary garage vehicle.`,
-      [{ text: "OK" }]
+      isKhmer ? "បានកំណត់រថយន្តចម្បង" : "Active Vehicle Updated",
+      isKhmer
+        ? `${vehicle.year} ${vehicle.make} ${vehicle.model} ពេលនេះជារថយន្តចម្បងក្នុងយានដ្ឋានរបស់អ្នក។`
+        : `${vehicle.year} ${vehicle.make} ${vehicle.model} is now your primary garage vehicle.`,
+      [{ text: isKhmer ? "យល់ព្រម" : "OK" }]
     );
   };
 
@@ -58,18 +62,23 @@ export function VehiclesScreen() {
 
   const handleDelete = (vehicle: Vehicle) => {
     Alert.alert(
-      "Remove Vehicle",
-      `Are you sure you want to remove ${vehicle.make} ${vehicle.model} from your garage?`,
+      isKhmer ? "លុបរថយន្តចេញ" : "Remove Vehicle",
+      isKhmer
+        ? `តើអ្នកពិតជាចង់លុប ${vehicle.make} ${vehicle.model} ចេញពីយានដ្ឋានមែនទេ?`
+        : `Are you sure you want to remove ${vehicle.make} ${vehicle.model} from your garage?`,
       [
-        { text: "Cancel", style: "cancel" },
+        { text: isKhmer ? "បោះបង់" : "Cancel", style: "cancel" },
         {
-          text: "Remove",
+          text: isKhmer ? "លុបចេញ" : "Remove",
           style: "destructive",
           onPress: async () => {
             try {
               await deleteVehicle(vehicle.id);
             } catch {
-              Alert.alert("Error", "Could not remove vehicle. Please try again.");
+              Alert.alert(
+                isKhmer ? "មានបញ្ហា" : "Error",
+                isKhmer ? "មិនអាចលុបរថយន្តបានទេ។ សូមព្យាយាមម្តងទៀត។" : "Could not remove vehicle. Please try again."
+              );
             }
           },
         },
@@ -120,9 +129,13 @@ export function VehiclesScreen() {
                 <Ionicons name="car-sport" size={22} color="#2563EB" />
               </View>
               <View style={{ flex: 1 }}>
-                <Text style={styles.summaryTitle}>Garage Fleet</Text>
+                <Text style={styles.summaryTitle}>
+                  {isKhmer ? "យានយន្តក្នុងយានដ្ឋាន" : "Garage Fleet"}
+                </Text>
                 <Text style={styles.summarySub}>
-                  {vehicles.length} {vehicles.length === 1 ? "Vehicle" : "Vehicles"} Registered
+                  {isKhmer
+                    ? `មាន ${vehicles.length} គ្រឿងបានចុះឈ្មោះ`
+                    : `${vehicles.length} ${vehicles.length === 1 ? "Vehicle" : "Vehicles"} Registered`}
                 </Text>
               </View>
               <TouchableOpacity
@@ -131,7 +144,9 @@ export function VehiclesScreen() {
                 activeOpacity={0.8}
               >
                 <Ionicons name="add" size={18} color="#FFFFFF" />
-                <Text style={styles.addBtnSmallText}>Add Car</Text>
+                <Text style={styles.addBtnSmallText}>
+                  {isKhmer ? "បន្ថែមរថយន្ត" : "Add Car"}
+                </Text>
               </TouchableOpacity>
             </View>
 
@@ -139,7 +154,8 @@ export function VehiclesScreen() {
               <View style={styles.activePillRow}>
                 <Ionicons name="radio-button-on" size={14} color="#16A34A" />
                 <Text style={styles.activePillText}>
-                  Active: <Text style={{ fontWeight: "700" }}>{activeVehicle.make} {activeVehicle.model}</Text>
+                  {isKhmer ? "កំពុងប្រើ: " : "Active: "}
+                  <Text style={{ fontWeight: "700" }}>{activeVehicle.make} {activeVehicle.model}</Text>
                 </Text>
               </View>
             )}
@@ -149,8 +165,12 @@ export function VehiclesScreen() {
         {/* Fleet List Header */}
         <AnimatedEntrance delay={70} direction="up">
           <View style={styles.sectionHeader}>
-            <Text style={styles.sectionTitle}>REGISTERED FLEET</Text>
-            <Text style={styles.sectionHint}>Tap to inspect in 3D or set primary</Text>
+            <Text style={styles.sectionTitle}>
+              {isKhmer ? "បញ្ជីយានយន្តដែលបានចុះឈ្មោះ" : "REGISTERED FLEET"}
+            </Text>
+            <Text style={styles.sectionHint}>
+              {isKhmer ? "ចុចដើម្បីពិនិត្យលម្អិត ឬកំណត់ជារថយន្តចម្បង" : "Tap to inspect in 3D or set primary"}
+            </Text>
           </View>
         </AnimatedEntrance>
 
@@ -202,7 +222,9 @@ export function VehiclesScreen() {
                 {isActive ? (
                   <View style={styles.primaryBadge}>
                     <Ionicons name="checkmark-circle" size={14} color="#2563EB" />
-                    <Text style={styles.primaryBadgeText}>Primary</Text>
+                    <Text style={styles.primaryBadgeText}>
+                      {isKhmer ? "រថយន្តចម្បង" : "Primary"}
+                    </Text>
                   </View>
                 ) : null}
               </View>
@@ -216,7 +238,9 @@ export function VehiclesScreen() {
 
                 <View style={styles.telemetryTag}>
                   <Ionicons name="shield-checkmark" size={14} color="#16A34A" />
-                  <Text style={styles.telemetryTagText}>96% Healthy</Text>
+                  <Text style={styles.telemetryTagText}>
+                    {isKhmer ? "ស្ថានភាព 96% ល្អ" : "96% Healthy"}
+                  </Text>
                 </View>
               </View>
 
@@ -229,7 +253,9 @@ export function VehiclesScreen() {
                   activeOpacity={0.8}
                 >
                   <Ionicons name="speedometer-outline" size={16} color="#FFFFFF" />
-                  <Text style={styles.inspect3dBtnText}>View Specs</Text>
+                  <Text style={styles.inspect3dBtnText}>
+                    {isKhmer ? "មើលទិន្នន័យ" : "View Specs"}
+                  </Text>
                 </TouchableOpacity>
 
                 {/* Set as Active Button */}
@@ -240,12 +266,16 @@ export function VehiclesScreen() {
                     activeOpacity={0.8}
                   >
                     <Ionicons name="checkmark" size={16} color="#2563EB" />
-                    <Text style={styles.setActiveBtnText}>Set Active</Text>
+                    <Text style={styles.setActiveBtnText}>
+                      {isKhmer ? "កំណត់ជាចម្បង" : "Set Active"}
+                    </Text>
                   </TouchableOpacity>
                 ) : (
                   <View style={styles.activeIndicator}>
                     <Ionicons name="checkmark-done" size={16} color="#16A34A" />
-                    <Text style={styles.activeIndicatorText}>Active Car</Text>
+                    <Text style={styles.activeIndicatorText}>
+                      {isKhmer ? "រថយន្តចម្បង" : "Active Car"}
+                    </Text>
                   </View>
                 )}
 
@@ -267,9 +297,13 @@ export function VehiclesScreen() {
         {!isLoading && vehicles.length === 0 && (
           <View style={styles.emptyCard}>
             <Ionicons name="car-sport-outline" size={56} color="#94A3B8" />
-            <Text style={styles.emptyTitle}>No Vehicles in Garage</Text>
+            <Text style={styles.emptyTitle}>
+              {isKhmer ? "មិនទាន់មានរថយន្តក្នុងយានដ្ឋាន" : "No Vehicles in Garage"}
+            </Text>
             <Text style={styles.emptySub}>
-              Register your car, SUV or pickup truck to track diagnostics, roadside assistance and vehicle health.
+              {isKhmer
+                ? "ចុះឈ្មោះរថយន្ត រថយន្ត SUV ឬរថយន្តភីកអាប់របស់អ្នកដើម្បីតាមដានរោគវិនិច្ឆ័យ សង្គ្រោះបន្ទាន់ និងសុខភាពរថយន្ត។"
+                : "Register your car, SUV or pickup truck to track diagnostics, roadside assistance and vehicle health."}
             </Text>
 
             <TouchableOpacity
@@ -278,7 +312,9 @@ export function VehiclesScreen() {
               activeOpacity={0.85}
             >
               <Ionicons name="add-circle" size={20} color="#FFFFFF" />
-              <Text style={styles.emptyPrimaryBtnText}>Register A Vehicle</Text>
+              <Text style={styles.emptyPrimaryBtnText}>
+                {isKhmer ? "ចុះឈ្មោះរថយន្តថ្មី" : "Register A Vehicle"}
+              </Text>
             </TouchableOpacity>
 
             <TouchableOpacity
@@ -287,7 +323,9 @@ export function VehiclesScreen() {
               activeOpacity={0.8}
             >
               <Text style={styles.emptySecondaryBtnText}>
-                Load Popular Models (Lexus, LC300, Tesla)
+                {isKhmer
+                  ? "ផ្ទុកម៉ូដែលពេញនិយម (Lexus, LC300, Tesla)"
+                  : "Load Popular Models (Lexus, LC300, Tesla)"}
               </Text>
             </TouchableOpacity>
           </View>
@@ -297,7 +335,9 @@ export function VehiclesScreen() {
         <View style={styles.tipBox}>
           <Ionicons name="information-circle-outline" size={18} color="#2563EB" />
           <Text style={styles.tipText}>
-            The active primary vehicle is used automatically for 1-tap roadside dispatch, emergency assistance, and service bookings.
+            {isKhmer
+              ? "រថយន្តចម្បងដែលសកម្ម នឹងត្រូវបានជ្រើសរើសដោយស្វ័យប្រវត្តិនោះពេលហៅសង្គ្រោះបន្ទាន់លើដងផ្លូវ និងកក់សេវាកម្មជួសជុល។"
+              : "The active primary vehicle is used automatically for 1-tap roadside dispatch, emergency assistance, and service bookings."}
           </Text>
         </View>
 

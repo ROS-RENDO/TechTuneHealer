@@ -41,28 +41,29 @@ const io = new Server(httpServer, {
 // Register WebSocket gateway
 registerLocationGateway(io);
 
-// Rate limiting
+// Rate limiting (Relaxed in development/testing mode)
+const isDev = process.env.NODE_ENV !== "production";
 const globalLimiter = rateLimit({
   windowMs: 15 * 60 * 1000, // 15 minutes
-  limit: 300,
+  limit: isDev ? 5000 : 300,
   standardHeaders: "draft-7",
   legacyHeaders: false,
 });
 const authLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
-  limit: 20,
+  limit: isDev ? 1000 : 20,
   standardHeaders: "draft-7",
   legacyHeaders: false,
 });
 const otpSendLimiter = rateLimit({
   windowMs: 60 * 60 * 1000, // 1 hour
-  limit: 5,
+  limit: isDev ? 50 : 5,
   standardHeaders: "draft-7",
   legacyHeaders: false,
 });
 const otpVerifyLimiter = rateLimit({
   windowMs: 60 * 60 * 1000, // 1 hour
-  limit: 10,
+  limit: isDev ? 100 : 10,
   standardHeaders: "draft-7",
   legacyHeaders: false,
 });

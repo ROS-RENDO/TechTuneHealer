@@ -77,11 +77,102 @@ router.get("/", authenticate, async (req: AuthRequest, res: Response) => {
   }
 
   if (service) {
-    providers = providers.filter((p) =>
-      p.services.some((s) =>
-        s.name.toLowerCase().includes(service.toLowerCase())
-      )
-    );
+    const sTerm = service.toLowerCase().trim();
+    providers = providers.filter((p) => {
+      // 1. Emergency SOS & Roadside Rescue: matches emergency-certified mechanics or roadside rescue services
+      if (sTerm === "emergency" || sTerm === "rescue" || sTerm === "sos") {
+        if (p.isEmergency) return true;
+        return p.services.some((s) => {
+          const n = s.name.toLowerCase();
+          const d = (s.description || "").toLowerCase();
+          return (
+            n.includes("tow") ||
+            n.includes("rescue") ||
+            n.includes("emergency") ||
+            n.includes("roadside") ||
+            n.includes("jump") ||
+            d.includes("emergency") ||
+            d.includes("rescue")
+          );
+        });
+      }
+
+      // 2. Battery care: jumpstart, test, replace, alternator
+      if (sTerm === "battery") {
+        return p.services.some((s) => {
+          const n = s.name.toLowerCase();
+          return n.includes("battery") || n.includes("jump") || n.includes("alternator") || n.includes("starter");
+        });
+      }
+
+      // 3. Tires & wheels: rotation, puncture, patch, balancing
+      if (sTerm === "tires" || sTerm === "tire") {
+        return p.services.some((s) => {
+          const n = s.name.toLowerCase();
+          return n.includes("tire") || n.includes("wheel") || n.includes("puncture") || n.includes("rotation");
+        });
+      }
+
+      // 4. Maintenance / Oil & Lube: oil change, filters, fluids, tune-up, inspection
+      if (sTerm === "maintenance" || sTerm === "oil") {
+        return p.services.some((s) => {
+          const n = s.name.toLowerCase();
+          return (
+            n.includes("oil") ||
+            n.includes("tune") ||
+            n.includes("filter") ||
+            n.includes("fluid") ||
+            n.includes("lube") ||
+            n.includes("inspection")
+          );
+        });
+      }
+
+      // 5. Fuel & gas: emergency fuel delivery, fuel pump/filter or roadside assist
+      if (sTerm === "fuel" || sTerm === "gas") {
+        return (
+          p.services.some((s) => {
+            const n = s.name.toLowerCase();
+            return n.includes("fuel") || n.includes("gas");
+          }) || p.isEmergency
+        );
+      }
+
+      // 6. EV & Charging: EV/Hybrid specialists and diagnostic repair
+      if (sTerm === "ev" || sTerm === "electric" || sTerm === "hybrid") {
+        const b = p.businessName.toLowerCase();
+        return (
+          b.includes("ev") ||
+          b.includes("hybrid") ||
+          p.services.some((s) => {
+            const n = s.name.toLowerCase();
+            return n.includes("ev") || n.includes("hybrid") || n.includes("inverter") || n.includes("battery");
+          })
+        );
+      }
+
+      // 7. Repair & Diagnostics: engine, brake, exhaust, diagnostics, mechanics
+      if (sTerm === "repair" || sTerm === "diagnostics") {
+        return p.services.some((s) => {
+          const n = s.name.toLowerCase();
+          return (
+            n.includes("repair") ||
+            n.includes("engine") ||
+            n.includes("brake") ||
+            n.includes("diagnostic") ||
+            n.includes("tune") ||
+            n.includes("fix")
+          );
+        });
+      }
+
+      // General fallback keyword search
+      return p.services.some(
+        (s) =>
+          s.name.toLowerCase().includes(sTerm) ||
+          (s.description && s.description.toLowerCase().includes(sTerm))
+      );
+    });
   }
 
   if (rating) {

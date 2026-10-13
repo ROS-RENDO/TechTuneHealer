@@ -16,7 +16,7 @@ import { useRoute, useNavigation } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { io, type Socket } from 'socket.io-client';
-import { useLocationStore } from '../../store';
+import { useLocationStore, useBookingStore } from '../../store';
 import { colors, spacing, fontSize, fontWeight, borderRadius, shadows } from '../../constants/theme';
 import { AnimatedEntrance } from '../../components';
 import { getProviderAvatarUrl } from '../../utils/helpers';
@@ -53,8 +53,31 @@ export function CustomerTrackingScreen() {
   const navigation = useNavigation();
   const { bookingId, mechanicName } = route.params || {};
   const { currentLocation: customerLocation } = useLocationStore();
+  const { bookings } = useBookingStore();
 
-  const [mechanicLocation, setMechanicLocation] = useState<LocationPoint | null>(null);
+  const matchedBooking = bookings.find((b) => b.id === bookingId);
+  const resolvedMechanicName =
+    mechanicName ||
+    matchedBooking?.provider?.businessName ||
+    (matchedBooking?.provider as any)?.name ||
+    'Assigned Certified Specialist';
+
+  // Determine initial starting position from provider workshop coordinates (never null/disappearing)
+  const defaultProviderCoord: LocationPoint = React.useMemo(() => {
+    const lat =
+      (matchedBooking?.provider as any)?.lat ??
+      (matchedBooking?.provider as any)?.latitude ??
+      matchedBooking?.provider?.location?.latitude ??
+      11.5600;
+    const lng =
+      (matchedBooking?.provider as any)?.lng ??
+      (matchedBooking?.provider as any)?.longitude ??
+      matchedBooking?.provider?.location?.longitude ??
+      104.9100;
+    return { latitude: Number(lat), longitude: Number(lng) };
+  }, [matchedBooking]);
+
+  const [mechanicLocation, setMechanicLocation] = useState<LocationPoint>(defaultProviderCoord);
   const [locationHistory, setLocationHistory] = useState<LocationPoint[]>([]);
   const [arrived, setArrived] = useState(false);
   const [lastUpdated, setLastUpdated] = useState<string | null>(null);
@@ -111,6 +134,12 @@ export function CustomerTrackingScreen() {
     ]);
   };
 
+  // Immediate route rendering on initial load
+  useEffect(() => {
+    const target = customerTargetRef.current || initialTarget;
+    fetchRoute(defaultProviderCoord, target);
+  }, [defaultProviderCoord]);
+
   // ── Connect and watch booking ───────────────────────────────────────
   useEffect(() => {
     let active = true;
@@ -135,21 +164,20 @@ export function CustomerTrackingScreen() {
       });
 
       socket.on('location:update', (data: { latitude: number; longitude: number; timestamp: string }) => {
-        const point: LocationPoint = { latitude: data.latitude, longitude: data.longitude };
-
-        let target = customerTargetRef.current!;
+        const point: LocationPoint = { latitude: Number(data.latitude), longitude: Number(data.longitude) };
+        const target = customerTargetRef.current || initialTarget;
 
         setMechanicLocation(point);
         setLocationHistory(prev => [...prev, point]);
         fetchRoute(point, target);
         setLastUpdated(new Date(data.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }));
 
-        // Pan map to mechanic
+        // Pan map smoothly to mechanic position
         mapRef.current?.animateToRegion({
           latitude: point.latitude,
           longitude: point.longitude,
-          latitudeDelta: 0.015,
-          longitudeDelta: 0.015,
+          latitudeDelta: 0.02,
+          longitudeDelta: 0.02,
         }, 1000);
       });
 
@@ -157,7 +185,7 @@ export function CustomerTrackingScreen() {
         setArrived(true);
         Alert.alert(
           '🎉 Mechanic Arrived!',
-          `${mechanicName || 'Your mechanic'} has arrived at your location.`,
+          `${resolvedMechanicName} has arrived at your location.`,
           [{ text: 'OK' }]
         );
       });
@@ -174,14 +202,14 @@ export function CustomerTrackingScreen() {
       active = false;
       socketRef.current?.disconnect();
     };
-  }, [bookingId, mechanicName, startPulse]);
+  }, [bookingId, resolvedMechanicName, startPulse]);
 
-  // ── Initial region (Phnom Penh default if no location yet) ───────────────────
+  // ── Initial region framed nicely between mechanic and customer ─────────────
   const initialRegion: Region = {
-    latitude: mechanicLocation?.latitude ?? 11.5564,
-    longitude: mechanicLocation?.longitude ?? 104.9282,
-    latitudeDelta: 0.05,
-    longitudeDelta: 0.05,
+    latitude: (mechanicLocation.latitude + initialTarget.latitude) / 2,
+    longitude: (mechanicLocation.longitude + initialTarget.longitude) / 2,
+    latitudeDelta: Math.max(Math.abs(mechanicLocation.latitude - initialTarget.latitude) * 1.6, 0.05),
+    longitudeDelta: Math.max(Math.abs(mechanicLocation.longitude - initialTarget.longitude) * 1.6, 0.05),
   };
 
   return (
@@ -242,7 +270,7 @@ export function CustomerTrackingScreen() {
                   <Ionicons name="navigate" size={16} color={colors.white} />
                 </View>
                 <View style={styles.webLabelPill}>
-                  <Text style={styles.webLabelText}>{mechanicName || 'Specialist'}</Text>
+                  <Text style={styles.webLabelText}>{resolvedMechanicName}</Text>
                 </View>
               </View>
 
@@ -269,7 +297,7 @@ export function CustomerTrackingScreen() {
           showsMyLocationButton={false}
         >
           {mechanicLocation && (
-            <Marker coordinate={mechanicLocation} title={mechanicName || 'Mechanic'}>
+            <Marker coordinate={mechanicLocation} title={resolvedMechanicName}>
               <View style={styles.markerWrapper}>
                 {/* Pulse ring */}
                 <Animated.View
@@ -350,16 +378,18 @@ export function CustomerTrackingScreen() {
             <>
               <View style={styles.mechRow}>
                 <Image
-                  source={{ uri: getProviderAvatarUrl({ businessName: mechanicName }) }}
+                  source={{ uri: getProviderAvatarUrl({ businessName: resolvedMechanicName }) }}
                   style={styles.mechAvatarImg}
                 />
                 <View style={{ flex: 1 }}>
-                  <Text style={styles.mechName}>{mechanicName || 'Your Mechanic'}</Text>
-                  <Text style={styles.mechSub}>On the way • Updated {lastUpdated || 'just now'}</Text>
+                  <Text style={styles.mechName}>{resolvedMechanicName}</Text>
+                  <Text style={styles.mechSub}>
+                    {connected ? "Live GPS Telemetry Active" : "Assigned Specialist • En Route"} • {lastUpdated ? `Updated ${lastUpdated}` : "Real-time"}
+                  </Text>
                 </View>
                 <TouchableOpacity
                   style={styles.callMechBtn}
-                  onPress={() => Linking.openURL('tel:012345678')}
+                  onPress={() => Linking.openURL(`tel:${matchedBooking?.provider?.phone || (matchedBooking?.provider as any)?.user?.phone || '+85512888999'}`)}
                 >
                   <Ionicons name="call" size={18} color={colors.white} />
                 </TouchableOpacity>

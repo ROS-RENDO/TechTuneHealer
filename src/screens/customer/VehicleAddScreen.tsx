@@ -14,6 +14,7 @@ import { Input } from "../../components/Input";
 import { Button } from "../../components/Button";
 import { AnimatedEntrance } from "../../components";
 import { useVehicleStore } from "../../store/vehicleStore";
+import { useTranslation } from "../../store/languageStore";
 import {
   colors,
   spacing,
@@ -112,6 +113,7 @@ export function VehicleAddScreen() {
   const navigation =
     useNavigation<CustomerStackScreenProps<"VehicleAdd">["navigation"]>();
   const { addVehicle } = useVehicleStore();
+  const { t, isKhmer } = useTranslation();
 
   const [formData, setFormData] = useState({
     make: "",
@@ -148,11 +150,11 @@ export function VehicleAddScreen() {
   const validate = () => {
     const newErrors: Record<string, string> = {};
 
-    if (!formData.make) newErrors.make = "Make is required";
-    if (!formData.model) newErrors.model = "Model is required";
-    if (!formData.year) newErrors.year = "Year is required";
+    if (!formData.make) newErrors.make = isKhmer ? "សូមជ្រើសរើសម៉ាករថយន្ត" : "Make is required";
+    if (!formData.model) newErrors.model = isKhmer ? "សូមបញ្ចូលម៉ូដែលរថយន្ត" : "Model is required";
+    if (!formData.year) newErrors.year = isKhmer ? "សូមជ្រើសរើសឆ្នាំផលិត" : "Year is required";
     if (!formData.licensePlate)
-      newErrors.licensePlate = "License plate is required";
+      newErrors.licensePlate = isKhmer ? "សូមបញ្ចូលស្លាកលេខរថយន្ត" : "License plate is required";
 
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
@@ -174,17 +176,22 @@ export function VehicleAddScreen() {
       });
 
       Alert.alert(
-        "Vehicle Added",
-        `${formData.year} ${formData.make} ${formData.model} was successfully registered to your garage!`,
+        isKhmer ? "បានបន្ថែមរថយន្តជោគជ័យ" : "Vehicle Added",
+        isKhmer
+          ? `${formData.year} ${formData.make} ${formData.model} ត្រូវបានចុះឈ្មោះចូលយានដ្ឋានរបស់អ្នកជោគជ័យ!`
+          : `${formData.year} ${formData.make} ${formData.model} was successfully registered to your garage!`,
         [
           {
-            text: "View My Vehicles",
+            text: isKhmer ? "មើលបញ្ជីយានយន្ត" : "View My Vehicles",
             onPress: () => navigation.goBack(),
           },
         ]
       );
     } catch {
-      Alert.alert("Error", "Failed to add vehicle. Please try again.");
+      Alert.alert(
+        isKhmer ? "មានបញ្ហា" : "Error",
+        isKhmer ? "មិនអាចចុះឈ្មោះរថយន្តបានទេ។ សូមព្យាយាមម្តងទៀត។" : "Failed to add vehicle. Please try again."
+      );
     } finally {
       setIsLoading(false);
     }
@@ -203,7 +210,9 @@ export function VehicleAddScreen() {
           <View style={styles.presetSection}>
             <View style={styles.presetHeader}>
               <Ionicons name="flash" size={16} color="#2563EB" />
-              <Text style={styles.presetHeaderText}>1-TAP POPULAR VEHICLE PRESETS</Text>
+              <Text style={styles.presetHeaderText}>
+                {isKhmer ? "គំរូរថយន្តពេញនិយមចុច ១ ដង" : "1-TAP POPULAR VEHICLE PRESETS"}
+              </Text>
             </View>
             <ScrollView
               horizontal
@@ -241,7 +250,11 @@ export function VehicleAddScreen() {
             <Ionicons name="car-sport" size={38} color={colors.primary[600]} />
           </View>
           <Text style={styles.formSectionTitle}>
-            {formData.make ? `${formData.year || "2024"} ${formData.make} ${formData.model}` : "Custom Vehicle Registration"}
+            {formData.make
+              ? `${formData.year || "2024"} ${formData.make} ${formData.model}`
+              : isKhmer
+              ? "ចុះឈ្មោះរថយន្តផ្ទាល់ខ្លួន"
+              : "Custom Vehicle Registration"}
           </Text>
         </View>
 
@@ -249,7 +262,7 @@ export function VehicleAddScreen() {
         <View style={styles.form}>
           {/* Make */}
           <View style={styles.fieldGroup}>
-            <Text style={styles.label}>Make *</Text>
+            <Text style={styles.label}>{isKhmer ? "ម៉ាករថយន្ត *" : "Make *"}</Text>
             <TouchableOpacity
               style={[
                 styles.selectButton,
@@ -263,7 +276,7 @@ export function VehicleAddScreen() {
                   !formData.make && styles.selectButtonPlaceholder,
                 ]}
               >
-                {formData.make || "Select make"}
+                {formData.make || (isKhmer ? "ជ្រើសរើសម៉ាក" : "Select make")}
               </Text>
               <Ionicons
                 name={showMakePicker ? "chevron-up" : "chevron-down"}
@@ -306,8 +319,8 @@ export function VehicleAddScreen() {
 
           {/* Model */}
           <Input
-            label="Model *"
-            placeholder="e.g., RX350, Land Cruiser, Model Y"
+            label={isKhmer ? "ម៉ូដែល *" : "Model *"}
+            placeholder={isKhmer ? "ឧទាហរណ៍ RX350, Land Cruiser, Model Y" : "e.g., RX350, Land Cruiser, Model Y"}
             value={formData.model}
             onChangeText={(value) => updateField("model", value)}
             error={errors.model}
@@ -315,7 +328,7 @@ export function VehicleAddScreen() {
 
           {/* Year */}
           <View style={styles.fieldGroup}>
-            <Text style={styles.label}>Year *</Text>
+            <Text style={styles.label}>{isKhmer ? "ឆ្នាំផលិត *" : "Year *"}</Text>
             <TouchableOpacity
               style={[
                 styles.selectButton,
@@ -329,7 +342,7 @@ export function VehicleAddScreen() {
                   !formData.year && styles.selectButtonPlaceholder,
                 ]}
               >
-                {formData.year || "Select year"}
+                {formData.year || (isKhmer ? "ជ្រើសរើសឆ្នាំ" : "Select year")}
               </Text>
               <Ionicons
                 name={showYearPicker ? "chevron-up" : "chevron-down"}
@@ -373,7 +386,7 @@ export function VehicleAddScreen() {
 
           {/* License Plate */}
           <Input
-            label="Cambodian License Plate *"
+            label={isKhmer ? "ស្លាកលេខកម្ពុជា *" : "Cambodian License Plate *"}
             placeholder="e.g., 2A-8888 or 2BC-1234"
             value={formData.licensePlate}
             onChangeText={(value) => updateField("licensePlate", value.toUpperCase())}
@@ -383,22 +396,22 @@ export function VehicleAddScreen() {
 
           {/* Color */}
           <Input
-            label="Color"
-            placeholder="e.g., Sonic Titanium, White, Black"
+            label={isKhmer ? "ពណ៌រថយន្ត" : "Color"}
+            placeholder={isKhmer ? "ឧទាហរណ៍ ពណ៌ស, ពណ៌ខ្មៅ, ពណ៌ទឹកប្រាក់" : "e.g., Sonic Titanium, White, Black"}
             value={formData.color}
             onChangeText={(value) => updateField("color", value)}
           />
 
           {/* VIN */}
           <Input
-            label="VIN (Optional)"
+            label={isKhmer ? "លេខកូដតួរថយន្ត VIN (ស្រេចចិត្ត)" : "VIN (Optional)"}
             placeholder="e.g., JTJBB31U872019482"
             value={formData.vin}
             onChangeText={(value) => updateField("vin", value)}
             autoCapitalize="characters"
           />
           <Text style={styles.helpText}>
-            17-character Vehicle Identification Number
+            {isKhmer ? "លេខកូដសម្គាល់រថយន្ត ១៧ ខ្ទង់" : "17-character Vehicle Identification Number"}
           </Text>
         </View>
       </ScrollView>
@@ -407,7 +420,11 @@ export function VehicleAddScreen() {
       <AnimatedEntrance delay={140} direction="up">
         <View style={styles.bottomActions}>
           <Button
-            title={isLoading ? "Saving Vehicle…" : "Save Vehicle to Garage"}
+            title={
+              isLoading
+                ? isKhmer ? "កំពុងរក្សាទុក…" : "Saving Vehicle…"
+                : isKhmer ? "រក្សាទុករថយន្តក្នុងយានដ្ឋាន" : "Save Vehicle to Garage"
+            }
             onPress={handleSave}
             loading={isLoading}
           />

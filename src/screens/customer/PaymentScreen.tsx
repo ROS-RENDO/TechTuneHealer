@@ -21,7 +21,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { colors, spacing, fontSize, fontWeight, borderRadius, shadows } from '../../constants/theme';
 import { AnimatedEntrance } from '../../components';
 import type { CustomerStackScreenProps } from '../../navigation/types';
-import { useBookingStore } from '../../store';
+import { useBookingStore, useTranslation } from '../../store';
 import axios from 'axios';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { format } from 'date-fns';
@@ -43,6 +43,7 @@ export function PaymentScreen() {
   const navigation = useNavigation<CustomerStackScreenProps<'Payment'>['navigation']>();
   const route = useRoute<CustomerStackScreenProps<'Payment'>['route']>();
   const { bookings, updateBookingStatus } = useBookingStore();
+  const { t, isKhmer } = useTranslation();
 
   // Safely extract parameters with fallbacks
   const params = (route.params as any) || {};
@@ -401,12 +402,14 @@ export function PaymentScreen() {
           </Animated.View>
 
           <Text style={styles.successTitle}>
-            {method === 'cod' ? 'Order Confirmed!' : 'Payment Successful!'}
+            {method === 'cod'
+              ? (isKhmer ? 'បានបញ្ជាក់ការកក់!' : 'Order Confirmed!')
+              : (isKhmer ? 'ការទូទាត់ជោគជ័យ!' : 'Payment Successful!')}
           </Text>
           <Text style={styles.successSubtitle}>
             {method === 'cod'
-              ? 'Your booking / order has been submitted. Pay our mechanic upon arrival.'
-              : `Your payment of $${finalTotal.toFixed(2)} has been authorized securely.`}
+              ? (isKhmer ? 'ការកក់របស់អ្នកត្រូវបានបញ្ជាក់។ សូមបង់ប្រាក់ផ្ទាល់ជូនជាងពេលទៅដល់។' : 'Your booking / order has been submitted. Pay our mechanic upon arrival.')
+              : (isKhmer ? `ការទូទាត់របស់អ្នកចំនួន $${finalTotal.toFixed(2)} ត្រូវបានអនុម័តដោយសុវត្ថិភាព។` : `Your payment of $${finalTotal.toFixed(2)} has been authorized securely.`)}
           </Text>
 
           {/* Official Invoice Card */}
@@ -414,12 +417,16 @@ export function PaymentScreen() {
             <View style={styles.invoiceHeader}>
               <View>
                 <Text style={styles.invoiceBrand}>TechTune Healer</Text>
-                <Text style={styles.invoiceSubBrand}>Official Digital Invoice</Text>
+                <Text style={styles.invoiceSubBrand}>
+                  {isKhmer ? 'វិក្កយបត្រឌីជីថលផ្លូវការ' : 'Official Digital Invoice'}
+                </Text>
               </View>
               <View style={styles.paidPill}>
                 <Ionicons name="shield-checkmark" size={12} color="#16A34A" />
                 <Text style={styles.paidPillText}>
-                  {method === 'cod' ? 'CONFIRMED (COD)' : 'PAID & VERIFIED'}
+                  {method === 'cod'
+                    ? (isKhmer ? 'បានបញ្ជាក់ (COD)' : 'CONFIRMED (COD)')
+                    : (isKhmer ? 'បានទូទាត់រួច' : 'PAID & VERIFIED')}
                 </Text>
               </View>
             </View>
@@ -511,7 +518,9 @@ export function PaymentScreen() {
               activeOpacity={0.88}
             >
               <Ionicons name="navigate-outline" size={18} color="#2563EB" />
-              <Text style={styles.trackLiveActionBtnText}>Track Mechanic Live</Text>
+              <Text style={styles.trackLiveActionBtnText}>
+                {isKhmer ? 'តាមដានជាងផ្ទាល់' : 'Track Mechanic Live'}
+              </Text>
             </TouchableOpacity>
           )}
 
@@ -519,15 +528,19 @@ export function PaymentScreen() {
             style={styles.secondaryActionBtn}
             onPress={() => {
               Alert.alert(
-                'Receipt Downloaded',
-                `Official Tax Invoice #${transactionId} has been saved to your downloads folder.`,
-                [{ text: 'OK' }]
+                isKhmer ? 'បានទាញយកវិក្កយបត្រ' : 'Receipt Downloaded',
+                isKhmer
+                  ? `វិក្កយបត្រផ្លូវការលេខ #${transactionId} ត្រូវបានរក្សាទុកក្នុងថតទាញយករបស់អ្នក។`
+                  : `Official Tax Invoice #${transactionId} has been saved to your downloads folder.`,
+                [{ text: isKhmer ? 'យល់ព្រម' : 'OK' }]
               );
             }}
             activeOpacity={0.8}
           >
             <Ionicons name="download-outline" size={18} color="#0F172A" />
-            <Text style={styles.secondaryActionBtnText}>Download PDF Receipt</Text>
+            <Text style={styles.secondaryActionBtnText}>
+              {isKhmer ? 'ទាញយកវិក្កយបត្រ PDF' : 'Download PDF Receipt'}
+            </Text>
           </TouchableOpacity>
 
           <TouchableOpacity
@@ -539,7 +552,9 @@ export function PaymentScreen() {
               });
             }}
           >
-            <Text style={styles.tertiaryBtnText}>Back to Home Dashboard</Text>
+            <Text style={styles.tertiaryBtnText}>
+              {isKhmer ? 'ត្រឡប់ទៅផ្ទាំងដើម' : 'Back to Home Dashboard'}
+            </Text>
           </TouchableOpacity>
         </ScrollView>
       </SafeAreaView>
@@ -560,7 +575,9 @@ export function PaymentScreen() {
             <Ionicons name="chevron-back" size={22} color={colors.neutral[800]} />
           </TouchableOpacity>
           <Text style={styles.headerTitle}>
-            {isWalletMode ? 'Payment Methods' : 'Checkout & Pay'}
+            {isWalletMode
+              ? (isKhmer ? 'វិធីសាស្ត្រទូទាត់ប្រាក់' : 'Payment Methods')
+              : (isKhmer ? 'ការទូទាត់ប្រាក់' : 'Checkout & Pay')}
           </Text>
           <View style={styles.securityBadge}>
             <Ionicons name="lock-closed" size={12} color="#16A34A" />
@@ -578,18 +595,20 @@ export function PaymentScreen() {
           <View style={styles.billingHero}>
             <View style={styles.billingHeroTop}>
               <View>
-                <Text style={styles.billingHeroSubtitle}>Total Payable</Text>
+                <Text style={styles.billingHeroSubtitle}>{isKhmer ? 'សរុបត្រូវបង់' : 'Total Payable'}</Text>
                 <Text style={styles.billingHeroAmount}>${finalTotal.toFixed(2)}</Text>
               </View>
               <View style={styles.khrBadge}>
-                <Text style={styles.khrBadgeLabel}>Cambodian Riel</Text>
+                <Text style={styles.khrBadgeLabel}>{isKhmer ? 'ប្រាក់រៀលកម្ពុជា' : 'Cambodian Riel'}</Text>
                 <Text style={styles.khrBadgeValue}>≈ {finalTotalKHR} ៛</Text>
               </View>
             </View>
 
             {/* Itemized Dropdown or summary list */}
             <View style={styles.itemsSummaryBox}>
-              <Text style={styles.summaryBoxTitle}>Order Summary ({items.length} item{items.length > 1 ? 's' : ''})</Text>
+              <Text style={styles.summaryBoxTitle}>
+                {isKhmer ? `សង្ខេបការបញ្ជាទិញ (${items.length} មុខ)` : `Order Summary (${items.length} item${items.length > 1 ? 's' : ''})`}
+              </Text>
               {items.map((item, idx) => (
                 <View key={idx} style={styles.summaryItemRow}>
                   <Text style={styles.summaryItemName} numberOfLines={1}>
@@ -604,18 +623,18 @@ export function PaymentScreen() {
               <View style={styles.summaryDivider} />
 
               <View style={styles.summaryFeeRow}>
-                <Text style={styles.summaryFeeLabel}>Platform Fee (Concierge)</Text>
-                <Text style={styles.summaryFeeFree}>Free (Member)</Text>
+                <Text style={styles.summaryFeeLabel}>{isKhmer ? 'ថ្លៃសេវាប្រព័ន្ធ (Concierge)' : 'Platform Fee (Concierge)'}</Text>
+                <Text style={styles.summaryFeeFree}>{isKhmer ? 'ឥតគិតថ្លៃ (សមាជិក)' : 'Free (Member)'}</Text>
               </View>
               <View style={styles.summaryFeeRow}>
-                <Text style={styles.summaryFeeLabel}>Cambodia VAT / Tax</Text>
-                <Text style={styles.summaryFeeVal}>Included</Text>
+                <Text style={styles.summaryFeeLabel}>{isKhmer ? 'អាករលើតម្លៃបន្ថែម (VAT)' : 'Cambodia VAT / Tax'}</Text>
+                <Text style={styles.summaryFeeVal}>{isKhmer ? 'រួមបញ្ចូលរួច' : 'Included'}</Text>
               </View>
 
               {appliedPromo && (
                 <View style={styles.summaryFeeRow}>
                   <Text style={[styles.summaryFeeLabel, { color: '#16A34A', fontWeight: '700' }]}>
-                    Coupon Discount ({appliedPromo})
+                    {isKhmer ? `ការបញ្ចុះតម្លៃ (${appliedPromo})` : `Coupon Discount (${appliedPromo})`}
                   </Text>
                   <Text style={[styles.summaryFeeVal, { color: '#16A34A', fontWeight: '700' }]}>
                     -${discountAmount.toFixed(2)}
@@ -631,14 +650,14 @@ export function PaymentScreen() {
                   <Ionicons name="pricetag-outline" size={18} color="#64748B" style={{ marginLeft: 12 }} />
                   <TextInput
                     style={styles.promoInput}
-                    placeholder="Enter Coupon (e.g. TECHTUNE10)"
+                    placeholder={isKhmer ? 'បញ្ចូលកូដបញ្ចុះតម្លៃ (ឧ. TECHTUNE10)' : 'Enter Coupon (e.g. TECHTUNE10)'}
                     placeholderTextColor="#94A3B8"
                     value={promoInput}
                     onChangeText={setPromoInput}
                     autoCapitalize="characters"
                   />
                   <TouchableOpacity style={styles.promoApplyBtn} onPress={handleApplyPromo}>
-                    <Text style={styles.promoApplyBtnText}>Apply</Text>
+                    <Text style={styles.promoApplyBtnText}>{isKhmer ? 'អនុវត្ត' : 'Apply'}</Text>
                   </TouchableOpacity>
                 </View>
               ) : (
@@ -646,7 +665,7 @@ export function PaymentScreen() {
                   <View style={styles.appliedPromoLeft}>
                     <Ionicons name="checkmark-circle" size={18} color="#16A34A" />
                     <Text style={styles.appliedPromoText}>
-                      Code <Text style={{ fontWeight: '800' }}>{appliedPromo}</Text> applied (-${discountAmount.toFixed(2)})
+                      {isKhmer ? `កូដ ` : `Code `}<Text style={{ fontWeight: '800' }}>{appliedPromo}</Text>{isKhmer ? ` ទទួលបានការបញ្ចុះ (-$${discountAmount.toFixed(2)})` : ` applied (-$${discountAmount.toFixed(2)})`}
                     </Text>
                   </View>
                   <TouchableOpacity onPress={handleRemovePromo} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
@@ -668,15 +687,17 @@ export function PaymentScreen() {
             <View style={styles.walletHeroIconCircle}>
               <Ionicons name="wallet-outline" size={32} color="#2563EB" />
             </View>
-            <Text style={styles.walletHeroTitle}>Payment Methods & Wallet</Text>
+            <Text style={styles.walletHeroTitle}>{isKhmer ? 'កាបូបប្រាក់ និងវិធីសាស្ត្រទូទាត់' : 'Payment Methods & Wallet'}</Text>
             <Text style={styles.walletHeroSub}>
-              Select or update your primary payment method for 1-tap roadside dispatch and shop checkout.
+              {isKhmer
+                ? 'ជ្រើសរើស ឬធ្វើបច្ចុប្បន្នភាពវិធីសាស្ត្រទូទាត់ចម្បងរបស់អ្នកសម្រាប់ហៅជាងបន្ទាន់ និងការទិញទំនិញ'
+                : 'Select or update your primary payment method for 1-tap roadside dispatch and shop checkout.'}
             </Text>
           </View>
         )}
 
         {/* ── PAYMENT METHOD SELECTOR TABS ── */}
-        <Text style={styles.sectionHeaderTitle}>Select Payment Method</Text>
+        <Text style={styles.sectionHeaderTitle}>{isKhmer ? 'ជ្រើសរើសវិធីសាស្ត្រទូទាត់' : 'Select Payment Method'}</Text>
 
         <View style={styles.methodSelectorList}>
           {/* Method 1: ABA PAY / Bakong KHQR */}
@@ -695,11 +716,11 @@ export function PaymentScreen() {
               <View style={styles.methodTitleRow}>
                 <Text style={styles.methodTitle}>ABA PAY / KHQR</Text>
                 <View style={styles.recommendedBadge}>
-                  <Text style={styles.recommendedBadgeText}>Popular</Text>
+                  <Text style={styles.recommendedBadgeText}>{isKhmer ? 'ពេញនិយម' : 'Popular'}</Text>
                 </View>
               </View>
               <Text style={styles.methodSubtitle}>
-                Instant QR scan via ABA Mobile, ACLEDA, Wing, or Bakong
+                {isKhmer ? 'ស្កេន QR ភ្លាមៗតាម ABA Mobile, អេស៊ីលីដា, វីង ឬបាគង' : 'Instant QR scan via ABA Mobile, ACLEDA, Wing, or Bakong'}
               </Text>
             </View>
           </TouchableOpacity>
@@ -718,7 +739,7 @@ export function PaymentScreen() {
             </View>
             <View style={{ flex: 1 }}>
               <View style={styles.methodTitleRow}>
-                <Text style={styles.methodTitle}>Credit / Debit Card</Text>
+                <Text style={styles.methodTitle}>{isKhmer ? 'កាតឥណទាន / ឥណពន្ធ' : 'Credit / Debit Card'}</Text>
               </View>
               <Text style={styles.methodSubtitle}>
                 Visa, Mastercard, JCB, UnionPay
@@ -740,10 +761,10 @@ export function PaymentScreen() {
             </View>
             <View style={{ flex: 1 }}>
               <View style={styles.methodTitleRow}>
-                <Text style={styles.methodTitle}>Cash on Delivery / Service</Text>
+                <Text style={styles.methodTitle}>{isKhmer ? 'ទូទាត់ជាសាច់ប្រាក់ផ្ទាល់' : 'Cash on Delivery / Service'}</Text>
               </View>
               <Text style={styles.methodSubtitle}>
-                Pay cash directly to technician upon vehicle inspection & handover
+                {isKhmer ? 'បង់ប្រាក់ផ្ទាល់ជាមួយជាងជំនាញពេលត្រួតពិនិត្យយានយន្តចប់សព្វគ្រប់' : 'Pay cash directly to technician upon vehicle inspection & handover'}
               </Text>
             </View>
           </TouchableOpacity>
@@ -794,7 +815,7 @@ export function PaymentScreen() {
                 />
                 <View style={styles.tapToEnlargeBadge}>
                   <Ionicons name="expand-outline" size={12} color="#FFFFFF" />
-                  <Text style={styles.tapToEnlargeText}>Tap to Enlarge</Text>
+                  <Text style={styles.tapToEnlargeText}>{isKhmer ? 'ចុចដើម្បីពង្រីក' : 'Tap to Enlarge'}</Text>
                 </View>
               </TouchableOpacity>
 
@@ -810,7 +831,7 @@ export function PaymentScreen() {
                     <View style={styles.currencyIconPill}>
                       <Text style={styles.currencyIconText}>$</Text>
                     </View>
-                    <Text style={styles.accountCardLabel}>USD Account</Text>
+                    <Text style={styles.accountCardLabel}>{isKhmer ? 'គណនីដុល្លារ (USD)' : 'USD Account'}</Text>
                     <Ionicons
                       name={copiedAcc === '007 971 932' ? 'checkmark' : 'copy-outline'}
                       size={14}
@@ -819,7 +840,7 @@ export function PaymentScreen() {
                   </View>
                   <Text style={styles.accountCardNumber}>007 971 932</Text>
                   <Text style={styles.accountCardHint}>
-                    {copiedAcc === '007 971 932' ? 'Copied!' : 'Tap to copy'}
+                    {copiedAcc === '007 971 932' ? (isKhmer ? 'បានចម្លង!' : 'Copied!') : (isKhmer ? 'ចុចដើម្បីចម្លង' : 'Tap to copy')}
                   </Text>
                 </TouchableOpacity>
 
@@ -833,7 +854,7 @@ export function PaymentScreen() {
                     <View style={[styles.currencyIconPill, { backgroundColor: '#FEE2E2' }]}>
                       <Text style={[styles.currencyIconText, { color: '#DC2626' }]}>៛</Text>
                     </View>
-                    <Text style={styles.accountCardLabel}>KHR Account</Text>
+                    <Text style={styles.accountCardLabel}>{isKhmer ? 'គណនីរៀល (KHR)' : 'KHR Account'}</Text>
                     <Ionicons
                       name={copiedAcc === '007 971 933' ? 'checkmark' : 'copy-outline'}
                       size={14}
@@ -842,7 +863,7 @@ export function PaymentScreen() {
                   </View>
                   <Text style={styles.accountCardNumber}>007 971 933</Text>
                   <Text style={styles.accountCardHint}>
-                    {copiedAcc === '007 971 933' ? 'Copied!' : 'Tap to copy'}
+                    {copiedAcc === '007 971 933' ? (isKhmer ? 'បានចម្លង!' : 'Copied!') : (isKhmer ? 'ចុចដើម្បីចម្លង' : 'Tap to copy')}
                   </Text>
                 </TouchableOpacity>
               </View>
@@ -859,8 +880,7 @@ export function PaymentScreen() {
               <View style={styles.qrCountdownRow}>
                 <Ionicons name="time-outline" size={16} color="#64748B" />
                 <Text style={styles.qrCountdownText}>
-                  QR Session valid for {Math.floor(countdown / 60)}:
-                  {(countdown % 60).toString().padStart(2, '0')} mins
+                  {isKhmer ? `សុពលភាព QR នៅសល់ ${Math.floor(countdown / 60)}:${(countdown % 60).toString().padStart(2, '0')} នាទី` : `QR Session valid for ${Math.floor(countdown / 60)}:${(countdown % 60).toString().padStart(2, '0')} mins`}
                 </Text>
               </View>
 
@@ -870,14 +890,14 @@ export function PaymentScreen() {
                   style={styles.khqrActionBtn}
                   onPress={() => {
                     Alert.alert(
-                      'KHQR Saved to Photos',
-                      'Rendo Ros official ABA KHQR payment slip has been saved to your photo album. Open any Cambodian banking app to scan and pay.',
+                      isKhmer ? 'បានរក្សាទុក KHQR ក្នុងរូបថត' : 'KHQR Saved to Photos',
+                      isKhmer ? 'វិក្កយបត្រ QR ផ្លូវការរបស់ Rendo Ros ត្រូវបានរក្សាទុកក្នុងអាល់ប៊ុមរូបថតរបស់អ្នក។ អ្នកអាចបើកកម្មវិធីធនាគារណាមួយនៅកម្ពុជាដើម្បីស្កេនទូទាត់។' : 'Rendo Ros official ABA KHQR payment slip has been saved to your photo album. Open any Cambodian banking app to scan and pay.',
                       [{ text: 'OK' }]
                     );
                   }}
                 >
                   <Ionicons name="image-outline" size={16} color="#0F172A" />
-                  <Text style={styles.khqrActionBtnText}>Save QR</Text>
+                  <Text style={styles.khqrActionBtnText}>{isKhmer ? 'រក្សាទុក QR' : 'Save QR'}</Text>
                 </TouchableOpacity>
 
                 <TouchableOpacity
@@ -886,7 +906,7 @@ export function PaymentScreen() {
                   activeOpacity={0.88}
                 >
                   <Ionicons name="phone-portrait-outline" size={16} color="#FFFFFF" />
-                  <Text style={[styles.khqrActionBtnText, { color: '#FFFFFF' }]}>Open ABA Mobile</Text>
+                  <Text style={[styles.khqrActionBtnText, { color: '#FFFFFF' }]}>{isKhmer ? 'បើក ABA Mobile' : 'Open ABA Mobile'}</Text>
                 </TouchableOpacity>
               </View>
             </View>
@@ -938,13 +958,13 @@ export function PaymentScreen() {
                   {/* Card Bottom Row */}
                   <View style={styles.vCardBottom}>
                     <View>
-                      <Text style={styles.vCardLabel}>CARDHOLDER</Text>
+                      <Text style={styles.vCardLabel}>{isKhmer ? 'ម្ចាស់កាត' : 'CARDHOLDER'}</Text>
                       <Text style={styles.vCardHolderName} numberOfLines={1}>
                         {cardName ? cardName.toUpperCase() : 'VALUED MOTORIST'}
                       </Text>
                     </View>
                     <View>
-                      <Text style={styles.vCardLabel}>EXPIRES</Text>
+                      <Text style={styles.vCardLabel}>{isKhmer ? 'ផុតកំណត់' : 'EXPIRES'}</Text>
                       <Text style={styles.vCardExpiry}>{expiry ? expiry : 'MM/YY'}</Text>
                     </View>
                   </View>
@@ -1000,7 +1020,7 @@ export function PaymentScreen() {
             {/* Input Form */}
             <View style={styles.cardForm}>
               {/* Card Number */}
-              <Text style={styles.inputLabel}>Card Number</Text>
+              <Text style={styles.inputLabel}>{isKhmer ? 'លេខកាត' : 'Card Number'}</Text>
               <View style={styles.inputWrapper}>
                 <Ionicons name="card-outline" size={18} color="#64748B" style={styles.inputIcon} />
                 <TextInput
@@ -1018,7 +1038,7 @@ export function PaymentScreen() {
               {/* Row: Expiry & CVV */}
               <View style={styles.formRow}>
                 <View style={{ flex: 1 }}>
-                  <Text style={styles.inputLabel}>Expiry Date</Text>
+                  <Text style={styles.inputLabel}>{isKhmer ? 'កាលបរិច្ឆេទផុតកំណត់' : 'Expiry Date'}</Text>
                   <View style={styles.inputWrapper}>
                     <Ionicons name="calendar-outline" size={18} color="#64748B" style={styles.inputIcon} />
                     <TextInput
@@ -1057,12 +1077,12 @@ export function PaymentScreen() {
               </View>
 
               {/* Cardholder Name */}
-              <Text style={styles.inputLabel}>Cardholder Name</Text>
+              <Text style={styles.inputLabel}>{isKhmer ? 'ឈ្មោះម្ចាស់កាត' : 'Cardholder Name'}</Text>
               <View style={styles.inputWrapper}>
                 <Ionicons name="person-outline" size={18} color="#64748B" style={styles.inputIcon} />
                 <TextInput
                   style={styles.formInput}
-                  placeholder="Name as printed on card"
+                  placeholder={isKhmer ? 'ឈ្មោះដូចដែលបានបោះពុម្ពលើកាត' : 'Name as printed on card'}
                   placeholderTextColor="#94A3B8"
                   autoCapitalize="characters"
                   value={cardName}
@@ -1083,7 +1103,7 @@ export function PaymentScreen() {
                   color={saveCard ? '#2563EB' : '#94A3B8'}
                 />
                 <Text style={styles.saveCardText}>
-                  Save card securely for future 1-tap bookings & orders
+                  {isKhmer ? 'រក្សាទុកកាតដោយសុវត្ថិភាពសម្រាប់ការកក់លើកក្រោយ' : 'Save card securely for future 1-tap bookings & orders'}
                 </Text>
               </TouchableOpacity>
             </View>
@@ -1096,23 +1116,25 @@ export function PaymentScreen() {
             <View style={styles.codIconCircle}>
               <Ionicons name="shield-checkmark" size={32} color="#16A34A" />
             </View>
-            <Text style={styles.codHeading}>Cash on Service Handover</Text>
+            <Text style={styles.codHeading}>{isKhmer ? 'ទូទាត់ជាសាច់ប្រាក់ពេលទទួលសេវា' : 'Cash on Service Handover'}</Text>
             <Text style={styles.codDescription}>
-              You do not need to make any upfront payment now. You will pay our certified mechanic directly in USD ($) or KHR (៛) upon diagnostic completion or parts delivery.
+              {isKhmer
+                ? 'លោកអ្នកមិនចាំបាច់បង់ប្រាក់មុនឡើយ។ លោកអ្នកអាចទូទាត់ជាដុល្លារ ($) ឬប្រាក់រៀល (៛) ដោយផ្ទាល់ជាមួយជាងជំនាញរបស់យើងបន្ទាប់ពីការពិនិត្យ ឬជួសជុលរួចរាល់។'
+                : 'You do not need to make any upfront payment now. You will pay our certified mechanic directly in USD ($) or KHR (៛) upon diagnostic completion or parts delivery.'}
             </Text>
 
             <View style={styles.codPerksList}>
               <View style={styles.codPerkItem}>
                 <Ionicons name="checkmark-circle" size={16} color="#16A34A" />
-                <Text style={styles.codPerkText}>Exact change carried by all mobile mechanics</Text>
+                <Text style={styles.codPerkText}>{isKhmer ? 'ជាងចល័តមានត្រៀមលុយអាប់គ្រប់ចំនួន' : 'Exact change carried by all mobile mechanics'}</Text>
               </View>
               <View style={styles.codPerkItem}>
                 <Ionicons name="checkmark-circle" size={16} color="#16A34A" />
-                <Text style={styles.codPerkText}>Instant digital invoice generated on completion</Text>
+                <Text style={styles.codPerkText}>{isKhmer ? 'មានវិក្កយបត្រឌីជីថលភ្លាមៗពេលបញ្ចប់សេវា' : 'Instant digital invoice generated on completion'}</Text>
               </View>
               <View style={styles.codPerkItem}>
                 <Ionicons name="checkmark-circle" size={16} color="#16A34A" />
-                <Text style={styles.codPerkText}>Cambodia standard exchange rate (1 USD = 4,100 KHR)</Text>
+                <Text style={styles.codPerkText}>{isKhmer ? 'អត្រាប្តូរប្រាក់ស្តង់ដារកម្ពុជា (1 USD = 4,100 KHR)' : 'Cambodia standard exchange rate (1 USD = 4,100 KHR)'}</Text>
               </View>
             </View>
           </View>
@@ -1122,10 +1144,12 @@ export function PaymentScreen() {
         <View style={styles.securityTrustCard}>
           <View style={styles.securityTrustRow}>
             <Ionicons name="shield-checkmark" size={18} color="#2563EB" />
-            <Text style={styles.securityTrustTitle}>TechTune Buyer Protection & Guarantee</Text>
+            <Text style={styles.securityTrustTitle}>{isKhmer ? 'ការការពារ និងការធានាពី TechTune' : 'TechTune Buyer Protection & Guarantee'}</Text>
           </View>
           <Text style={styles.securityTrustSub}>
-            All transactions are protected by bank-level 256-bit encryption. Mechanic bookings carry a 100% service satisfaction guarantee.
+            {isKhmer
+              ? 'រាល់ប្រតិបត្តិការទាំងអស់ត្រូវបានការពារដោយការអ៊ិនគ្រីបកម្រិតធនាគារ 256-bit។ ការកក់ជាងជួសជុលមានការធានាគុណភាពសេវាកម្ម 100%។'
+              : 'All transactions are protected by bank-level 256-bit encryption. Mechanic bookings carry a 100% service satisfaction guarantee.'}
           </Text>
         </View>
 
@@ -1136,9 +1160,9 @@ export function PaymentScreen() {
       <AnimatedEntrance delay={140} direction="up">
         <View style={styles.bottomBar}>
           <View style={styles.bottomPriceCol}>
-            <Text style={styles.bottomTotalLabel}>Total to Authorize</Text>
+            <Text style={styles.bottomTotalLabel}>{isKhmer ? 'សរុបត្រូវបង់' : 'Total to Authorize'}</Text>
             <Text style={styles.bottomTotalVal}>
-              {isWalletMode ? 'Default Method' : `$${finalTotal.toFixed(2)}`}
+              {isWalletMode ? (isKhmer ? 'វិធីសាស្ត្រលំនាំដើម' : 'Default Method') : `$${finalTotal.toFixed(2)}`}
             </Text>
           </View>
 
@@ -1159,10 +1183,10 @@ export function PaymentScreen() {
                 />
                 <Text style={styles.paySubmitBtnText}>
                   {isWalletMode
-                    ? 'Save Method'
+                    ? (isKhmer ? 'រក្សាទុកវិធីសាស្ត្រ' : 'Save Method')
                     : method === 'cod'
-                    ? 'Confirm Booking'
-                    : `Pay $${finalTotal.toFixed(2)}`}
+                    ? (isKhmer ? 'បញ្ជាក់ការកក់' : 'Confirm Booking')
+                    : (isKhmer ? `បង់ប្រាក់ $${finalTotal.toFixed(2)}` : `Pay $${finalTotal.toFixed(2)}`)}
                 </Text>
               </>
             )}
@@ -1200,11 +1224,11 @@ export function PaymentScreen() {
 
             <View style={styles.modalDetailsBox}>
               <View style={styles.modalDetailRow}>
-                <Text style={styles.modalDetailLabel}>USD Account:</Text>
+                <Text style={styles.modalDetailLabel}>{isKhmer ? 'គណនីដុល្លារ (USD):' : 'USD Account:'}</Text>
                 <Text style={styles.modalDetailVal}>007 971 932</Text>
               </View>
               <View style={styles.modalDetailRow}>
-                <Text style={styles.modalDetailLabel}>KHR Account:</Text>
+                <Text style={styles.modalDetailLabel}>{isKhmer ? 'គណនីរៀល (KHR):' : 'KHR Account:'}</Text>
                 <Text style={styles.modalDetailVal}>007 971 933</Text>
               </View>
             </View>
@@ -1213,7 +1237,7 @@ export function PaymentScreen() {
               style={styles.modalDoneBtn}
               onPress={() => setQrModalVisible(false)}
             >
-              <Text style={styles.modalDoneBtnText}>Done</Text>
+              <Text style={styles.modalDoneBtnText}>{isKhmer ? 'រួចរាល់' : 'Done'}</Text>
             </TouchableOpacity>
           </View>
         </View>

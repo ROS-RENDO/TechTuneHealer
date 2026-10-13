@@ -83,16 +83,19 @@ export function BookingDetailScreen() {
 
   const handleCancelBooking = () => {
     Alert.alert(
-      'Cancel Booking',
-      'Are you sure you want to cancel this booking request?',
+      language === 'km' ? 'បោះបង់ការកក់' : 'Cancel Booking',
+      language === 'km' ? 'តើអ្នកពិតជាចង់បោះបង់សំណើកក់នេះមែនទេ?' : 'Are you sure you want to cancel this booking request?',
       [
-        { text: 'Keep Booking', style: 'cancel' },
+        { text: language === 'km' ? 'រក្សាទុក' : 'Keep Booking', style: 'cancel' },
         {
-          text: 'Yes, Cancel',
+          text: language === 'km' ? 'បាទ/ចាស បោះបង់' : 'Yes, Cancel',
           style: 'destructive',
           onPress: () => {
             updateBookingStatus(bookingId, 'cancelled');
-            Alert.alert('Booking Cancelled', 'Your request has been cancelled.');
+            Alert.alert(
+              language === 'km' ? 'បានបោះបង់ការកក់' : 'Booking Cancelled',
+              language === 'km' ? 'សំណើកក់របស់អ្នកត្រូវបានបោះបង់ដោយជោគជ័យ។' : 'Your request has been cancelled.'
+            );
           },
         },
       ]
@@ -101,12 +104,12 @@ export function BookingDetailScreen() {
 
   const handleCallProvider = () => {
     Alert.alert(
-      'Call Mechanic',
-      `Call ${providerName} at ${providerPhone}?`,
+      language === 'km' ? 'ទូរស័ព្ទទៅកាន់ជាង' : 'Call Mechanic',
+      `${language === 'km' ? 'តើអ្នកចង់ទូរស័ព្ទទៅកាន់' : 'Call'} ${providerName} (${providerPhone})?`,
       [
-        { text: 'Cancel', style: 'cancel' },
+        { text: language === 'km' ? 'បោះបង់' : 'Cancel', style: 'cancel' },
         {
-          text: 'Call Now',
+          text: language === 'km' ? 'ទូរស័ព្ទឥឡូវនេះ' : 'Call Now',
           onPress: () => Linking.openURL(`tel:${providerPhone.replace(/\s/g, '')}`),
         },
       ]
@@ -117,48 +120,63 @@ export function BookingDetailScreen() {
     switch (status) {
       case 'pending':
         return {
-          label: 'Pending Confirmation',
+          label: language === 'km' ? 'រង់ចាំការបញ្ជាក់' : 'Pending Confirmation',
           bg: '#FFFBEB',
           text: '#D97706',
           border: '#FEF3C7',
           dot: '#F59E0B',
-          explainer: 'Your request has been sent to the mechanic. We will notify you when accepted.',
+          explainer:
+            language === 'km'
+              ? 'សំណើរបស់អ្នកត្រូវបានបញ្ជូនទៅកាន់ជាងជំនាញ។ យើងនឹងជូនដំណឹងនៅពេលជាងទទួលយក។'
+              : 'Your request has been sent to the mechanic. We will notify you when accepted.',
         };
       case 'accepted':
         return {
-          label: 'Confirmed & En Route',
+          label: language === 'km' ? 'បានបញ្ជាក់ & កំពុងធ្វើដំណើរ' : 'Confirmed & En Route',
           bg: '#EFF6FF',
           text: '#2563EB',
           border: '#DBEAFE',
           dot: '#3B82F6',
-          explainer: 'Mechanic has accepted your booking and is preparing equipment.',
+          explainer:
+            language === 'km'
+              ? 'ជាងជំនាញបានទទួលយកការកក់របស់អ្នករួចហើយ និងកំពុងរៀបចំឧបករណ៍ធ្វើដំណើរ។'
+              : 'Mechanic has accepted your booking and is preparing equipment.',
         };
       case 'in_progress':
         return {
-          label: 'Service In Progress',
+          label: language === 'km' ? 'កំពុងដំណើរការជួសជុល' : 'Service In Progress',
           bg: '#F0FDF4',
           text: '#16A34A',
           border: '#DCFCE7',
           dot: '#22C55E',
-          explainer: 'Mechanic is actively inspecting and repairing your vehicle.',
+          explainer:
+            language === 'km'
+              ? 'ជាងកំពុងពិនិត្យ និងជួសជុលរថយន្តរបស់អ្នកផ្ទាល់។'
+              : 'Mechanic is actively inspecting and repairing your vehicle.',
         };
       case 'completed':
         return {
-          label: 'Service Completed',
+          label: language === 'km' ? 'សេវាកម្មបានបញ្ចប់' : 'Service Completed',
           bg: '#F8FAFC',
           text: '#334155',
           border: '#E2E8F0',
           dot: '#10B981',
-          explainer: 'Job finished, inspected, and verified. Warranty telemetry active.',
+          explainer:
+            language === 'km'
+              ? 'ការងារជួសជុលត្រូវបានបញ្ចប់ និងត្រួតពិនិត្យរួចរាល់។'
+              : 'Job finished, inspected, and verified. Warranty telemetry active.',
         };
       case 'cancelled':
         return {
-          label: 'Cancelled',
+          label: language === 'km' ? 'បានបោះបង់' : 'Cancelled',
           bg: '#FEF2F2',
           text: '#DC2626',
           border: '#FEE2E2',
           dot: '#EF4444',
-          explainer: 'This booking was cancelled. You can reschedule whenever ready.',
+          explainer:
+            language === 'km'
+              ? 'ការកក់នេះត្រូវបានបោះបង់។ អ្នកអាចកក់សារជាថ្មីបានគ្រប់ពេល។'
+              : 'This booking was cancelled. You can reschedule whenever ready.',
         };
       default:
         return {
@@ -167,7 +185,7 @@ export function BookingDetailScreen() {
           text: '#475569',
           border: '#E2E8F0',
           dot: '#94A3B8',
-          explainer: 'Booking record updated.',
+          explainer: language === 'km' ? 'ស្ថានភាពត្រូវបានបន្ទាន់សម័យ។' : 'Booking record updated.',
         };
     }
   };
@@ -246,13 +264,19 @@ export function BookingDetailScreen() {
               <View style={styles.trackingHeroTop}>
                 <View style={styles.trackingBeacon}>
                   <View style={styles.trackingRadarDot} />
-                  <Text style={styles.trackingBeaconText}>LIVE GPS DISPATCH</Text>
+                  <Text style={styles.trackingBeaconText}>
+                    {language === 'km' ? 'ប្រព័ន្ធតាមដានផ្ទាល់ GPS' : 'LIVE GPS DISPATCH'}
+                  </Text>
                 </View>
-                <Text style={styles.trackingEtaText}>ETA: ~12 mins</Text>
+                <Text style={styles.trackingEtaText}>
+                  {language === 'km' ? 'មកដល់ក្នុងរង្វង់ ~១២ នាទី' : 'ETA: ~12 mins'}
+                </Text>
               </View>
 
               <Text style={styles.trackingHeroTitle}>
-                Mechanic is on the way with emergency mobile diagnostic gear.
+                {language === 'km'
+                  ? 'ជាងជំនាញកំពុងធ្វើដំណើរមកកាន់ទីតាំងរបស់អ្នកជាមួយឧបករណ៍ពិនិត្យរថយន្តចល័ត។'
+                  : 'Mechanic is on the way with emergency mobile diagnostic gear.'}
               </Text>
 
               <TouchableOpacity
@@ -266,7 +290,9 @@ export function BookingDetailScreen() {
                 activeOpacity={0.88}
               >
                 <Ionicons name="navigate" size={16} color="#FFFFFF" />
-                <Text style={styles.trackMapBtnText}>Track Mechanic Live on Map</Text>
+                <Text style={styles.trackMapBtnText}>
+                  {language === 'km' ? 'តាមដានជាងលើផែនទីផ្ទាល់' : 'Track Mechanic Live on Map'}
+                </Text>
                 <Ionicons name="arrow-forward" size={15} color="#FFFFFF" />
               </TouchableOpacity>
             </View>
@@ -275,7 +301,9 @@ export function BookingDetailScreen() {
 
         {/* 3. Schedule Card */}
         <View style={styles.sectionCard}>
-          <Text style={styles.sectionHeading}>APPOINTMENT SCHEDULE</Text>
+          <Text style={styles.sectionHeading}>
+            {language === 'km' ? 'កាលវិភាគណាត់ជួប' : 'APPOINTMENT SCHEDULE'}
+          </Text>
           <View style={styles.scheduleRow}>
             <View style={styles.scheduleIconBox}>
               <Ionicons name="calendar-outline" size={20} color={colors.neutral[800]} />
@@ -285,7 +313,8 @@ export function BookingDetailScreen() {
                 {format(new Date(booking.scheduledDate), 'EEEE, MMMM d, yyyy')}
               </Text>
               <Text style={styles.scheduleSub}>
-                Time Window: {booking.scheduledTime || 'Immediate Rescue Dispatch'}
+                {language === 'km' ? 'ម៉ោង៖ ' : 'Time Window: '}
+                {booking.scheduledTime || (language === 'km' ? 'សង្គ្រោះបន្ទាន់ភ្លាមៗ' : 'Immediate Rescue Dispatch')}
               </Text>
             </View>
           </View>
@@ -294,13 +323,17 @@ export function BookingDetailScreen() {
         {/* 4. Registered Vehicle Card */}
         <View style={styles.sectionCard}>
           <View style={styles.sectionHeaderRow}>
-            <Text style={styles.sectionHeading}>SERVICED VEHICLE</Text>
+            <Text style={styles.sectionHeading}>
+              {language === 'km' ? 'យានយន្តទទួលសេវាកម្ម' : 'SERVICED VEHICLE'}
+            </Text>
             {vehicle && (
               <TouchableOpacity
                 onPress={() => navigation.navigate('Garage', { vehicle })}
                 activeOpacity={0.7}
               >
-                <Text style={styles.sectionActionText}>Vehicle Specs</Text>
+                <Text style={styles.sectionActionText}>
+                  {language === 'km' ? 'ព័ត៌មានលម្អិត' : 'Vehicle Specs'}
+                </Text>
               </TouchableOpacity>
             )}
           </View>
@@ -312,7 +345,9 @@ export function BookingDetailScreen() {
             <View style={styles.vehicleCol}>
               <Text style={styles.vehicleTitle}>{vehicleName}</Text>
               <Text style={styles.vehicleSub}>
-                Plate: {vehiclePlate} • Color: {vehicleColor}
+                {language === 'km' ? 'ផ្លាកលេខ៖ ' : 'Plate: '}
+                {vehiclePlate} • {language === 'km' ? 'ពណ៌៖ ' : 'Color: '}
+                {vehicleColor}
               </Text>
             </View>
             <View style={styles.plateChip}>
@@ -330,7 +365,9 @@ export function BookingDetailScreen() {
 
         {/* 5. Assigned Mechanic / Provider */}
         <View style={styles.sectionCard}>
-          <Text style={styles.sectionHeading}>ASSIGNED SERVICE PROVIDER</Text>
+          <Text style={styles.sectionHeading}>
+            {language === 'km' ? 'ជាងជួសជុលទទួលបន្ទុក' : 'ASSIGNED SERVICE PROVIDER'}
+          </Text>
           <View style={styles.providerRow}>
             <Image
               source={{ uri: getProviderAvatarUrl(provider) }}
@@ -349,7 +386,9 @@ export function BookingDetailScreen() {
               <View style={styles.ratingBadge}>
                 <Ionicons name="star" size={12} color="#EAB308" />
                 <Text style={styles.ratingNum}>{providerRating}</Text>
-                <Text style={styles.ratingLabel}>Verified Automotive Shop</Text>
+                <Text style={styles.ratingLabel}>
+                  {language === 'km' ? 'យានដ្ឋានមានការបញ្ជាក់' : 'Verified Automotive Shop'}
+                </Text>
               </View>
             </View>
           </View>
@@ -362,7 +401,9 @@ export function BookingDetailScreen() {
               activeOpacity={0.8}
             >
               <Ionicons name="call-outline" size={16} color={colors.neutral[800]} />
-              <Text style={styles.providerActionBtnText}>Call Direct</Text>
+              <Text style={styles.providerActionBtnText}>
+                {language === 'km' ? 'ទូរស័ព្ទផ្ទាល់' : 'Call Direct'}
+              </Text>
             </TouchableOpacity>
 
             <TouchableOpacity
@@ -371,36 +412,40 @@ export function BookingDetailScreen() {
               activeOpacity={0.8}
             >
               <Ionicons name="chatbubble-ellipses-outline" size={16} color={colors.neutral[800]} />
-              <Text style={styles.providerActionBtnText}>In-App Message</Text>
+              <Text style={styles.providerActionBtnText}>
+                {language === 'km' ? 'ផ្ញើសារក្នុងកម្មវិធី' : 'In-App Message'}
+              </Text>
             </TouchableOpacity>
           </View>
         </View>
 
         {/* 6. Visual Stepper Timeline */}
         <View style={styles.sectionCard}>
-          <Text style={styles.sectionHeading}>STATUS PROGRESS TIMELINE</Text>
+          <Text style={styles.sectionHeading}>
+            {language === 'km' ? 'ដំណាក់កាលដំណើរការការងារ' : 'STATUS PROGRESS TIMELINE'}
+          </Text>
           <View style={styles.timelineList}>
             <TimelineStep
-              title="Booking Requested"
+              title={language === 'km' ? 'បានស្នើសុំការកក់' : 'Booking Requested'}
               subtitle={format(new Date(booking.createdAt), 'MMM d, yyyy • h:mm a')}
               isDone={true}
               isCurrent={normalizedStatus === 'pending'}
             />
             <TimelineStep
-              title="Mechanic Confirmed"
-              subtitle="Mechanic accepted and assigned technicians"
+              title={language === 'km' ? 'ជាងបានទទួលការកក់' : 'Mechanic Confirmed'}
+              subtitle={language === 'km' ? 'ជាងបានទទួលយក និងចាត់ចែងបុគ្គលិកបច្ចេកទេស' : 'Mechanic accepted and assigned technicians'}
               isDone={['accepted', 'in_progress', 'completed'].includes(normalizedStatus)}
               isCurrent={normalizedStatus === 'accepted'}
             />
             <TimelineStep
-              title="Service In Progress"
-              subtitle="On-site diagnostic scanning & active repair"
+              title={language === 'km' ? 'កំពុងដំណើរការជួសជុល' : 'Service In Progress'}
+              subtitle={language === 'km' ? 'កំពុងពិនិត្យវិភាគ និងជួសជុលផ្ទាល់លើរថយន្ត' : 'On-site diagnostic scanning & active repair'}
               isDone={['in_progress', 'completed'].includes(normalizedStatus)}
               isCurrent={normalizedStatus === 'in_progress'}
             />
             <TimelineStep
-              title="Service Completed"
-              subtitle="Inspection signed off and warranty verified"
+              title={language === 'km' ? 'ការងារបានបញ្ចប់' : 'Service Completed'}
+              subtitle={language === 'km' ? 'ការត្រួតពិនិត្យបានបញ្ចប់ និងមានការធានាត្រឹមត្រូវ' : 'Inspection signed off and warranty verified'}
               isDone={normalizedStatus === 'completed'}
               isCurrent={normalizedStatus === 'completed'}
               isLast={true}
@@ -410,24 +455,38 @@ export function BookingDetailScreen() {
 
         {/* 7. Itemized Payment & Receipt Summary */}
         <View style={[styles.sectionCard, { marginBottom: 120 }]}>
-          <Text style={styles.sectionHeading}>COST BREAKDOWN & PAYMENT</Text>
+          <Text style={styles.sectionHeading}>
+            {language === 'km' ? 'តម្លៃសរុប & ការទូទាត់' : 'COST BREAKDOWN & PAYMENT'}
+          </Text>
           <View style={styles.receiptRow}>
-            <Text style={styles.receiptLabel}>Diagnostic & Service Fee</Text>
+            <Text style={styles.receiptLabel}>
+              {language === 'km' ? 'ថ្លៃពិនិត្យវិនិច្ឆ័យ & សេវាកម្ម' : 'Diagnostic & Service Fee'}
+            </Text>
             <Text style={styles.receiptValue}>${(booking.estimatedPrice || 50).toFixed(2)}</Text>
           </View>
           <View style={styles.receiptRow}>
-            <Text style={styles.receiptLabel}>Tools & Equipment Fee</Text>
-            <Text style={styles.receiptValue}>Included</Text>
+            <Text style={styles.receiptLabel}>
+              {language === 'km' ? 'ឧបករណ៍ & សម្ភារៈបច្ចេកទេស' : 'Tools & Equipment Fee'}
+            </Text>
+            <Text style={styles.receiptValue}>
+              {language === 'km' ? 'រួមបញ្ចូលហើយ' : 'Included'}
+            </Text>
           </View>
           <View style={styles.receiptRow}>
-            <Text style={styles.receiptLabel}>VAT & Environmental Tax (10%)</Text>
-            <Text style={styles.receiptValue}>$0.00 (Exempt)</Text>
+            <Text style={styles.receiptLabel}>
+              {language === 'km' ? 'ពន្ធអាករ & បរិស្ថាន (10%)' : 'VAT & Environmental Tax (10%)'}
+            </Text>
+            <Text style={styles.receiptValue}>
+              {language === 'km' ? '$0.00 (លើកលែង)' : '$0.00 (Exempt)'}
+            </Text>
           </View>
 
           <View style={styles.receiptDivider} />
 
           <View style={styles.receiptRowTotal}>
-            <Text style={styles.receiptTotalLabel}>Total Amount</Text>
+            <Text style={styles.receiptTotalLabel}>
+              {language === 'km' ? 'ចំនួនប្រាក់សរុប' : 'Total Amount'}
+            </Text>
             <Text style={styles.receiptTotalValue}>
               ${(booking.finalPrice || booking.estimatedPrice || 50).toFixed(2)}
             </Text>
@@ -436,7 +495,9 @@ export function BookingDetailScreen() {
           <View style={styles.paymentMethodPill}>
             <Ionicons name="card-outline" size={14} color={colors.neutral[600]} />
             <Text style={styles.paymentMethodPillText}>
-              Payment: ABA PAY, KHQR or Cash on Completion
+              {language === 'km'
+                ? 'ទូទាត់តាម ABA PAY, KHQR ឬសាច់ប្រាក់នៅពេលរួចរាល់'
+                : 'Payment: ABA PAY, KHQR or Cash on Completion'}
             </Text>
           </View>
         </View>
@@ -466,7 +527,9 @@ export function BookingDetailScreen() {
                 activeOpacity={0.85}
               >
                 <Ionicons name="lock-closed" size={16} color="#FFFFFF" />
-                <Text style={styles.primaryBottomBtnText}>Checkout Payment Online</Text>
+                <Text style={styles.primaryBottomBtnText}>
+                  {language === 'km' ? 'ទូទាត់ប្រាក់តាមអនឡាញ' : 'Checkout Payment Online'}
+                </Text>
               </TouchableOpacity>
 
               <TouchableOpacity

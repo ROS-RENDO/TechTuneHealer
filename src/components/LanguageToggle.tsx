@@ -1,5 +1,6 @@
 import React from "react";
 import { View, Text, TouchableOpacity, StyleSheet } from "react-native";
+import * as Haptics from "expo-haptics";
 import { useTranslation } from "../store/languageStore";
 import { colors, borderRadius } from "../constants/theme";
 
@@ -12,7 +13,15 @@ export function LanguageToggle({ compact = false, variant = "pill" }: LanguageTo
   const { language, setLanguage } = useTranslation();
 
   const handleToggle = () => {
+    Haptics.selectionAsync().catch(() => {});
     setLanguage(language === "en" ? "km" : "en");
+  };
+
+  const handleSelect = (lang: "en" | "km") => {
+    if (language !== lang) {
+      Haptics.selectionAsync().catch(() => {});
+      setLanguage(lang);
+    }
   };
 
   if (variant === "button") {
@@ -21,7 +30,8 @@ export function LanguageToggle({ compact = false, variant = "pill" }: LanguageTo
         style={styles.buttonContainer}
         onPress={handleToggle}
         activeOpacity={0.75}
-        accessibilityLabel="Toggle Language English / Khmer"
+        accessibilityRole="button"
+        accessibilityLabel={`Toggle Language, current is ${language === "en" ? "English" : "Khmer"}`}
       >
         <Text style={styles.flagEmoji}>{language === "en" ? "🇺🇸" : "🇰🇭"}</Text>
         <Text style={styles.buttonText}>{language === "en" ? "EN" : "ខ្មែរ"}</Text>
@@ -37,8 +47,12 @@ export function LanguageToggle({ compact = false, variant = "pill" }: LanguageTo
           language === "en" && styles.pillSegmentActive,
           compact && styles.compactSegment,
         ]}
-        onPress={() => setLanguage("en")}
+        onPress={() => handleSelect("en")}
         activeOpacity={0.8}
+        accessibilityRole="button"
+        accessibilityLabel="English Language"
+        accessibilityState={{ selected: language === "en" }}
+        hitSlop={{ top: 8, bottom: 8, left: 6, right: 6 }}
       >
         <Text style={[styles.pillText, language === "en" && styles.pillTextActive]}>
           EN
@@ -51,8 +65,12 @@ export function LanguageToggle({ compact = false, variant = "pill" }: LanguageTo
           language === "km" && styles.pillSegmentActive,
           compact && styles.compactSegment,
         ]}
-        onPress={() => setLanguage("km")}
+        onPress={() => handleSelect("km")}
         activeOpacity={0.8}
+        accessibilityRole="button"
+        accessibilityLabel="Khmer Language"
+        accessibilityState={{ selected: language === "km" }}
+        hitSlop={{ top: 8, bottom: 8, left: 6, right: 6 }}
       >
         <Text style={[styles.pillText, language === "km" && styles.pillTextActive]}>
           ខ្មែរ

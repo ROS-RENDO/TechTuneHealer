@@ -77,6 +77,12 @@ export function registerLocationGateway(io: Server) {
     );
   }
 
+  // In-memory cache of last reported coordinates per booking
+  const lastKnownLocations = new Map<
+    string,
+    { latitude: number; longitude: number; timestamp: string }
+  >();
+
   io.on("connection", (socket: Socket) => {
     console.log(`📡 Socket connected: ${socket.id} (user ${socket.data.userId})`);
 
@@ -93,6 +99,13 @@ export function registerLocationGateway(io: Server) {
             socket.emit("booking:error", { message: "Not authorized for this booking" });
             return;
           }
+
+          // Cache current location
+          lastKnownLocations.set(bookingId, {
+            latitude,
+            longitude,
+            timestamp: new Date().toISOString(),
+          });
 
           // Join the room for this booking (so mechanic is in the room too)
           socket.join(`booking:${bookingId}`);
@@ -122,6 +135,34 @@ export function registerLocationGateway(io: Server) {
         }
         socket.join(`booking:${bookingId}`);
         console.log(`👁  User ${socket.data.userId} watching booking:${bookingId}`);
+
+        // 1. If we have a cached live location from a recent broadcast, send it immediately
+        if (lastKnownLocations.has(bookingId)) {
+          socket.emit("location:update", lastKnownLocations.get(bookingId));
+        } else {
+          // 2. Otherwise query provider's workshop base location from DB so mechanic never disappears
+          const booking = await prisma.booking.findUnique({
+            where: { id: bookingId },
+            select: {
+              provider: {
+                select: {
+                  lat: true,
+                  lng: true,
+                },
+              },
+            },
+          });
+
+          if (booking?.provider?.lat && booking?.provider?.lng) {
+            const baseLocation = {
+              latitude: booking.provider.lat,
+              longitude: booking.provider.lng,
+              timestamp: new Date().toISOString(),
+            };
+            lastKnownLocations.set(bookingId, baseLocation);
+            socket.emit("location:update", baseLocation);
+          }
+        }
       } catch (error) {
         console.error("customer:watch error:", error);
       }

@@ -15,3 +15,7 @@ yarn-debug.log*
 .DS_Store
 .vscode/
 .idea/
+
+# Playwright artifacts
+playwright-report/
+test-results/

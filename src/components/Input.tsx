@@ -85,6 +85,9 @@ function Input({
           <TouchableOpacity
             onPress={() => setShowPassword(!showPassword)}
             style={styles.rightIconButton}
+            hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
+            accessibilityRole="button"
+            accessibilityLabel={showPassword ? "Hide password" : "Show password"}
           >
             <Ionicons
               name={showPassword ? "eye-off-outline" : "eye-outline"}
@@ -110,23 +113,25 @@ const styles = StyleSheet.create({
     marginBottom: spacing.md,
   },
   label: {
-    ...typography.body,
-    color: colors.text,
-    fontWeight: "500",
-    marginBottom: spacing.xs,
+    fontSize: 13,
+    color: "#334155",
+    fontWeight: "700",
+    marginBottom: 6,
+    letterSpacing: -0.1,
   },
   inputContainer: {
     flexDirection: "row",
     alignItems: "center",
-    backgroundColor: colors.surface,
-    borderWidth: 1,
-    borderColor: colors.border,
-    borderRadius: borderRadius.md,
+    backgroundColor: colors.white,
+    borderWidth: 1.5,
+    borderColor: "#E2E8F0",
+    borderRadius: borderRadius.lg,
     paddingHorizontal: spacing.md,
+    minHeight: 48,
   },
   inputContainerFocused: {
-    borderWidth: 2,
-    backgroundColor: colors.background,
+    borderColor: colors.primary[600],
+    backgroundColor: colors.white,
   },
   inputContainerError: {
     borderColor: colors.error[500],

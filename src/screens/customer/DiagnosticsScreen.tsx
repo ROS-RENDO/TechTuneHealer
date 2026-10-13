@@ -144,7 +144,13 @@ export function DiagnosticsScreen() {
         {/* AI Photo Scan Section */}
         <AnimatedEntrance delay={70} direction="up">
           <View style={styles.aiScanSection}>
-            <Text style={styles.sectionTitle}>
+            <View style={styles.aiScanBadgeRow}>
+              <View style={styles.aiChip}>
+                <Ionicons name="sparkles" size={13} color={colors.primary[600]} />
+                <Text style={styles.aiChipText}>NEURAL VISION V2</Text>
+              </View>
+            </View>
+            <Text style={styles.aiScanTitle}>
               {language === "km" ? "ម៉ាស៊ីនស្កេនរូបភាព AI" : "AI Photo Scanner"}
             </Text>
             <Text style={styles.sectionSubtitle}>
@@ -153,8 +159,9 @@ export function DiagnosticsScreen() {
                 : "Take a photo of the damaged part or warning light and let AI diagnose it instantly."}
             </Text>
             <Button 
-              title={language === "km" ? "ស្កេនជាមួយ AI" : "Scan with AI"} 
-              variant="outline" 
+              title={language === "km" ? "ស្កេនជាមួយ AI ឥឡូវនេះ" : "Launch AI Scanner"} 
+              variant="tonal" 
+              icon={<Ionicons name="scan-outline" size={18} color={colors.primary[700]} />}
               onPress={() => navigation.navigate("AiDiagnosisResult" as never)} 
             />
           </View>
@@ -321,35 +328,65 @@ const styles = StyleSheet.create({
     lineHeight: 20,
   },
   aiScanSection: {
-    padding: spacing.lg,
-    paddingTop: 0,
+    padding: spacing.xl,
     backgroundColor: colors.white,
     marginHorizontal: spacing.lg,
-    borderRadius: borderRadius.xl,
+    borderRadius: borderRadius["2xl"],
     marginBottom: spacing.lg,
+    borderWidth: 1,
+    borderColor: "#E2E8F0",
     ...shadows.sm,
+  },
+  aiScanBadgeRow: {
+    marginBottom: spacing.sm,
+  },
+  aiChip: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 5,
+    backgroundColor: colors.primary[50],
+    paddingHorizontal: 9,
+    paddingVertical: 3,
+    borderRadius: 8,
+    alignSelf: "flex-start",
+    borderWidth: 1,
+    borderColor: colors.primary[100],
+  },
+  aiChipText: {
+    fontSize: 10,
+    fontWeight: "800",
+    color: colors.primary[700],
+    letterSpacing: 0.5,
+  },
+  aiScanTitle: {
+    fontSize: fontSize.lg,
+    fontWeight: fontWeight.bold,
+    color: colors.neutral[900],
+    marginBottom: 4,
   },
   sectionSubtitle: {
     fontSize: fontSize.sm,
-    color: colors.neutral[600],
-    marginBottom: spacing.md,
+    color: colors.neutral[500],
+    marginBottom: spacing.lg,
     lineHeight: 20,
   },
   categoriesSection: {
-    padding: spacing.lg,
-    paddingTop: 0,
+    paddingHorizontal: spacing.lg,
+    paddingBottom: spacing.lg,
   },
   sectionTitle: {
     fontSize: fontSize.lg,
-    fontWeight: fontWeight.semibold,
+    fontWeight: fontWeight.bold,
     color: colors.neutral[900],
-    marginBottom: spacing.lg,
+    marginBottom: spacing.md,
   },
   categoryCard: {
     backgroundColor: colors.white,
-    borderRadius: borderRadius.xl,
+    borderRadius: borderRadius["2xl"],
     marginBottom: spacing.md,
     overflow: "hidden",
+    borderWidth: 1,
+    borderColor: "#F1F5F9",
     ...shadows.sm,
   },
   categoryHeader: {
@@ -357,6 +394,7 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "space-between",
     padding: spacing.lg,
+    minHeight: 56,
   },
   categoryLeft: {
     flexDirection: "row",
@@ -366,7 +404,7 @@ const styles = StyleSheet.create({
   categoryIcon: {
     width: 44,
     height: 44,
-    borderRadius: borderRadius.md,
+    borderRadius: borderRadius.lg,
     backgroundColor: colors.primary[50],
     alignItems: "center",
     justifyContent: "center",
@@ -383,11 +421,12 @@ const styles = StyleSheet.create({
   },
   selectedBadge: {
     backgroundColor: colors.primary[600],
-    width: 20,
-    height: 20,
-    borderRadius: 10,
+    minWidth: 22,
+    height: 22,
+    borderRadius: 11,
     alignItems: "center",
     justifyContent: "center",
+    paddingHorizontal: 6,
   },
   selectedBadgeText: {
     fontSize: fontSize.xs,
@@ -396,22 +435,25 @@ const styles = StyleSheet.create({
   },
   symptomsList: {
     borderTopWidth: 1,
-    borderTopColor: colors.neutral[100],
-    paddingVertical: spacing.sm,
+    borderTopColor: "#F1F5F9",
+    backgroundColor: "#FAFAFA",
+    paddingVertical: spacing.xs,
   },
   symptomItem: {
     flexDirection: "row",
     alignItems: "center",
-    paddingVertical: spacing.md,
+    minHeight: 48,
+    paddingVertical: spacing.sm,
     paddingHorizontal: spacing.lg,
     gap: spacing.md,
   },
   checkbox: {
-    width: 22,
-    height: 22,
-    borderRadius: 6,
+    width: 24,
+    height: 24,
+    borderRadius: 7,
     borderWidth: 2,
     borderColor: colors.neutral[300],
+    backgroundColor: colors.white,
     alignItems: "center",
     justifyContent: "center",
   },
@@ -420,12 +462,14 @@ const styles = StyleSheet.create({
     borderColor: colors.primary[600],
   },
   symptomLabel: {
-    fontSize: fontSize.base,
+    fontSize: fontSize.sm,
     color: colors.neutral[700],
+    flex: 1,
+    lineHeight: 20,
   },
   symptomLabelSelected: {
-    color: colors.primary[700],
-    fontWeight: fontWeight.medium,
+    color: colors.primary[900],
+    fontWeight: fontWeight.semibold,
   },
   summaryCard: {
     flexDirection: "row",

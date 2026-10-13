@@ -2,7 +2,6 @@ import React from "react";
 import {
   TouchableOpacity,
   Text,
-  
   ActivityIndicator,
   ViewStyle,
   TextStyle,
@@ -12,7 +11,7 @@ import { colors, spacing, borderRadius } from "../constants/theme";
 interface ButtonProps {
   title: string;
   onPress: () => void;
-  variant?: "primary" | "secondary" | "outline" | "ghost" | "danger";
+  variant?: "primary" | "secondary" | "outline" | "ghost" | "danger" | "tonal";
   size?: "small" | "medium" | "large";
   disabled?: boolean;
   loading?: boolean;
@@ -41,33 +40,44 @@ function Button({
       flexDirection: "row",
       alignItems: "center",
       justifyContent: "center",
-      borderRadius: borderRadius.md,
+      borderRadius: borderRadius.lg,
       gap: spacing.sm,
     };
 
-    // Size styles
+    // Strict Apple HIG compliant minimum heights and comfortable horizontal padding
     switch (size) {
       case "small":
+        baseStyle.minHeight = 44;
         baseStyle.paddingVertical = spacing.sm;
         baseStyle.paddingHorizontal = spacing.md;
+        baseStyle.borderRadius = borderRadius.md;
         break;
       case "large":
+        baseStyle.minHeight = 56;
         baseStyle.paddingVertical = spacing.lg;
         baseStyle.paddingHorizontal = spacing.xl;
+        baseStyle.borderRadius = borderRadius.xl;
         break;
       default:
+        baseStyle.minHeight = 48;
         baseStyle.paddingVertical = spacing.md;
         baseStyle.paddingHorizontal = spacing.lg;
+        baseStyle.borderRadius = borderRadius.lg;
     }
 
-    // Variant styles
+    // High-taste color variants
     switch (variant) {
       case "secondary":
         baseStyle.backgroundColor = colors.secondary[600];
         break;
+      case "tonal":
+        baseStyle.backgroundColor = colors.primary[50];
+        baseStyle.borderWidth = 1;
+        baseStyle.borderColor = colors.primary[100];
+        break;
       case "outline":
         baseStyle.backgroundColor = "transparent";
-        baseStyle.borderWidth = 1;
+        baseStyle.borderWidth = 1.5;
         baseStyle.borderColor = colors.primary[600];
         break;
       case "ghost":
@@ -78,10 +88,18 @@ function Button({
         break;
       default:
         baseStyle.backgroundColor = colors.primary[600];
+        // Apple-style subtle drop shadow for primary call-to-action
+        baseStyle.shadowColor = colors.primary[600];
+        baseStyle.shadowOffset = { width: 0, height: 3 };
+        baseStyle.shadowOpacity = 0.22;
+        baseStyle.shadowRadius = 6;
+        baseStyle.elevation = 3;
     }
 
     if (disabled || loading) {
-      baseStyle.opacity = 0.6;
+      baseStyle.opacity = 0.55;
+      baseStyle.shadowOpacity = 0;
+      baseStyle.elevation = 0;
     }
 
     if (fullWidth) {
@@ -93,23 +111,27 @@ function Button({
 
   const getTextStyle = (): TextStyle => {
     const baseTextStyle: TextStyle = {
-      fontWeight: "600",
+      fontWeight: "700",
+      letterSpacing: -0.2,
     };
 
-    // Size styles
+    // Typographic sizing
     switch (size) {
       case "small":
         baseTextStyle.fontSize = 14;
         break;
       case "large":
-        baseTextStyle.fontSize = 18;
+        baseTextStyle.fontSize = 17;
         break;
       default:
-        baseTextStyle.fontSize = 16;
+        baseTextStyle.fontSize = 15;
     }
 
-    // Variant styles
+    // Variant colors
     switch (variant) {
+      case "tonal":
+        baseTextStyle.color = colors.primary[700];
+        break;
       case "outline":
       case "ghost":
         baseTextStyle.color = colors.primary[600];
@@ -126,12 +148,16 @@ function Button({
       style={[getButtonStyle(), style]}
       onPress={onPress}
       disabled={disabled || loading}
-      activeOpacity={0.8}
+      activeOpacity={0.78}
+      accessibilityRole="button"
+      accessibilityLabel={title}
+      accessibilityState={{ disabled: disabled || loading, busy: loading }}
+      hitSlop={{ top: 6, bottom: 6, left: 6, right: 6 }}
     >
       {loading ? (
         <ActivityIndicator
           color={
-            variant === "outline" || variant === "ghost"
+            variant === "outline" || variant === "ghost" || variant === "tonal"
               ? colors.primary[600]
               : colors.white
           }

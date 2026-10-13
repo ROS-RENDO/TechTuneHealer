@@ -14,6 +14,7 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { useNavigation } from "@react-navigation/native";
 import { Ionicons } from "@expo/vector-icons";
 import { useAuthStore } from "../../store";
+import { useTranslation } from "../../store/languageStore";
 import { Input } from "../../components/Input";
 import { Button } from "../../components/Button";
 import { AnimatedEntrance } from "../../components";
@@ -39,6 +40,7 @@ export function EditProfileScreen() {
   const navigation =
     useNavigation<CustomerStackScreenProps<"EditProfile">["navigation"]>();
   const { user, setUser } = useAuthStore();
+  const { t, isKhmer } = useTranslation();
 
   const [name, setName] = useState(user?.name || "Ros Rendo");
   const [email, setEmail] = useState(user?.email || "driver@techtunehealer.com");
@@ -50,9 +52,9 @@ export function EditProfileScreen() {
 
   const validate = () => {
     const errs: Record<string, string> = {};
-    if (!name.trim()) errs.name = "Full name is required";
-    if (!email.trim() || !email.includes("@")) errs.email = "Valid email is required";
-    if (!phone.trim()) errs.phone = "Phone number is required";
+    if (!name.trim()) errs.name = isKhmer ? "សូមបញ្ចូលឈ្មោះពេញរបស់អ្នក" : "Full name is required";
+    if (!email.trim() || !email.includes("@")) errs.email = isKhmer ? "សូមបញ្ចូលអ៊ីមែលត្រឹមត្រូវ" : "Valid email is required";
+    if (!phone.trim()) errs.phone = isKhmer ? "សូមបញ្ចូលលេខទូរស័ព្ទ" : "Phone number is required";
     setErrors(errs);
     return Object.keys(errs).length === 0;
   };
@@ -86,12 +88,19 @@ export function EditProfileScreen() {
       }
 
       Alert.alert(
-        "Profile Updated",
-        "Your profile details have been successfully saved.",
-        [{ text: "OK", onPress: () => navigation.goBack() }]
+        isKhmer ? "បានកែប្រែជោគជ័យ" : "Profile Updated",
+        isKhmer
+          ? "ព័ត៌មានគណនីរបស់អ្នកត្រូវបានរក្សាទុកដោយជោគជ័យ។"
+          : "Your profile details have been successfully saved.",
+        [{ text: isKhmer ? "យល់ព្រម" : "OK", onPress: () => navigation.goBack() }]
       );
     } catch {
-      Alert.alert("Error", "Could not save profile changes. Please try again.");
+      Alert.alert(
+        isKhmer ? "មានបញ្ហា" : "Error",
+        isKhmer
+          ? "មិនអាចរក្សាទុកព័ត៌មានបានទេ។ សូមព្យាយាមម្តងទៀត។"
+          : "Could not save profile changes. Please try again."
+      );
     } finally {
       setIsSaving(false);
     }
@@ -114,7 +123,9 @@ export function EditProfileScreen() {
             >
               <Ionicons name="chevron-back" size={22} color={colors.neutral[800]} />
             </TouchableOpacity>
-            <Text style={styles.headerTitle}>Edit Profile</Text>
+            <Text style={styles.headerTitle}>
+              {isKhmer ? "កែប្រែព័ត៌មានគណនី" : "Edit Profile"}
+            </Text>
             <View style={{ width: 40 }} />
           </View>
         </AnimatedEntrance>
@@ -133,7 +144,9 @@ export function EditProfileScreen() {
                   <Ionicons name="camera" size={14} color="#FFFFFF" />
                 </View>
               </View>
-              <Text style={styles.avatarSectionTitle}>Choose Driver Avatar</Text>
+              <Text style={styles.avatarSectionTitle}>
+                {isKhmer ? "ជ្រើសរើសរូបតំណាងគណនី" : "Choose Driver Avatar"}
+              </Text>
 
               {/* Avatar Preset Selector */}
               <View style={styles.presetsRow}>
@@ -162,23 +175,25 @@ export function EditProfileScreen() {
           {/* Form Fields Card */}
           <AnimatedEntrance delay={100} direction="up">
             <View style={styles.formCard}>
-              <Text style={styles.formSectionTitle}>PERSONAL INFORMATION</Text>
+              <Text style={styles.formSectionTitle}>
+                {isKhmer ? "ព័ត៌មានផ្ទាល់ខ្លួន" : "PERSONAL INFORMATION"}
+              </Text>
 
               <Input
-                label="Full Name"
+                label={isKhmer ? "ឈ្មោះពេញ" : "Full Name"}
                 value={name}
                 onChangeText={(t) => {
                   setName(t);
                   if (errors.name) setErrors((e) => ({ ...e, name: "" }));
                 }}
-                placeholder="e.g. Ros Rendo"
+                placeholder={isKhmer ? "ឧ. រស់ រិនដូ" : "e.g. Ros Rendo"}
                 leftIcon="person-outline"
                 error={errors.name}
                 autoCapitalize="words"
               />
 
               <Input
-                label="Phone Number"
+                label={isKhmer ? "លេខទូរស័ព្ទ" : "Phone Number"}
                 value={phone}
                 onChangeText={(t) => {
                   setPhone(t);
@@ -188,11 +203,15 @@ export function EditProfileScreen() {
                 leftIcon="call-outline"
                 keyboardType="phone-pad"
                 error={errors.phone}
-                helperText="Used for roadside rescue callouts & dispatch notifications"
+                helperText={
+                  isKhmer
+                    ? "ប្រើប្រាស់សម្រាប់ការហៅទូរស័ព្ទសង្គ្រោះបន្ទាន់ និងដំណឹងការកក់"
+                    : "Used for roadside rescue callouts & dispatch notifications"
+                }
               />
 
               <Input
-                label="Email Address"
+                label={isKhmer ? "អ៊ីមែល" : "Email Address"}
                 value={email}
                 onChangeText={(t) => {
                   setEmail(t);
@@ -206,10 +225,10 @@ export function EditProfileScreen() {
               />
 
               <Input
-                label="Primary Region / City"
+                label={isKhmer ? "ទីក្រុង / រាជធានី" : "Primary Region / City"}
                 value={city}
                 onChangeText={setCity}
-                placeholder="Phnom Penh, Cambodia"
+                placeholder={isKhmer ? "រាជធានីភ្នំពេញ, កម្ពុជា" : "Phnom Penh, Cambodia"}
                 leftIcon="location-outline"
               />
             </View>
@@ -222,9 +241,13 @@ export function EditProfileScreen() {
                 <Ionicons name="shield-checkmark" size={20} color="#16A34A" />
               </View>
               <View style={{ flex: 1 }}>
-                <Text style={styles.statusTitle}>Verified Driver Account</Text>
+                <Text style={styles.statusTitle}>
+                  {isKhmer ? "គណនីអ្នកបើកបរបានផ្ទៀងផ្ទាត់" : "Verified Driver Account"}
+                </Text>
                 <Text style={styles.statusSub}>
-                  Full access to Vehicle Telemetry, 24/7 Roadside Rescue & Certified Garages.
+                  {isKhmer
+                    ? "ចូលប្រើពេញលេញទៅកាន់ទិន្នន័យរថយន្ត សង្គ្រោះបន្ទាន់ 24/7 និងយានដ្ឋានស្តង់ដារ។"
+                    : "Full access to Vehicle Telemetry, 24/7 Roadside Rescue & Certified Garages."}
                 </Text>
               </View>
             </View>
@@ -234,7 +257,7 @@ export function EditProfileScreen() {
           <AnimatedEntrance delay={180} direction="up">
             <View style={styles.saveWrap}>
               <Button
-                title="Save Profile Changes"
+                title={isKhmer ? "រក្សាទុកការផ្លាស់ប្តូរ" : "Save Profile Changes"}
                 onPress={handleSave}
                 loading={isSaving}
                 fullWidth

@@ -133,6 +133,7 @@ export function EmergencyScreen() {
 
   const [selectedIssue, setSelectedIssue] = useState<string | null>("flat_tire");
   const [isLocating, setIsLocating] = useState(false);
+  const [emergencyProvidersList, setEmergencyProvidersList] = useState<ServiceProvider[]>([]);
   const [locationAddress, setLocationAddress] = useState<string>(
     language === "km" ? "កំពុងស្វែងរកទីតាំងរបស់អ្នក..." : "Getting your location...",
   );
@@ -193,7 +194,16 @@ export function EmergencyScreen() {
         setLocationAddress("Phnom Penh, Cambodia");
       }
 
-      await searchProviders(coords);
+      try {
+        const emerg = await api.providers.getEmergency(coords.latitude, coords.longitude);
+        if (emerg && emerg.length > 0) {
+          setEmergencyProvidersList(emerg);
+        } else {
+          await searchProviders(coords);
+        }
+      } catch {
+        await searchProviders(coords);
+      }
     } catch {
       setError("Failed to get location");
     } finally {
@@ -202,11 +212,14 @@ export function EmergencyScreen() {
   };
 
   const emergencyProviders = useMemo(() => {
+    if (emergencyProvidersList.length > 0) {
+      return emergencyProvidersList;
+    }
     if (providers && providers.length > 0) {
       return providers;
     }
     return FALLBACK_EMERGENCY_PROVIDERS;
-  }, [providers]);
+  }, [emergencyProvidersList, providers]);
 
   const handleCallEmergency = () => {
     Linking.openURL("tel:119");
@@ -509,28 +522,30 @@ const styles = StyleSheet.create({
   },
   issueCard: {
     width: "22%",
-    aspectRatio: 1,
+    minHeight: 74,
     backgroundColor: colors.white,
-    borderRadius: borderRadius.lg,
+    borderRadius: borderRadius.xl,
     alignItems: "center",
     justifyContent: "center",
-    borderWidth: 2,
-    borderColor: colors.neutral[200],
+    borderWidth: 1.5,
+    borderColor: "#E2E8F0",
     padding: spacing.sm,
+    ...shadows.sm,
   },
   issueCardSelected: {
-    borderColor: colors.error[500],
+    borderColor: colors.error[600],
     backgroundColor: colors.error[50],
   },
   issueLabel: {
-    fontSize: fontSize.xs,
+    fontSize: 11,
     color: colors.neutral[600],
     textAlign: "center",
     marginTop: spacing.xs,
+    fontWeight: "600",
   },
   issueLabelSelected: {
     color: colors.error[700],
-    fontWeight: fontWeight.medium,
+    fontWeight: "800",
   },
   loadingContainer: {
     alignItems: "center",
