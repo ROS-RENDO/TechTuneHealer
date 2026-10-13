@@ -31,8 +31,10 @@ function walkAndPatch(dir) {
         ]);
       } else if (entry.name.endsWith('.swift')) {
         patchFile(fullPath, [
-          // Swift 6.0/6.1 requires weak variables to be mutable (var instead of let)
-          [/(\b(?:private|internal|public|fileprivate)?\s*)weak\s+let\s+runtime:/g, '$1weak var runtime:'],
+          // Swift 6.0/6.1 requires weak variables to be mutable (var instead of let) and nonisolated(unsafe) for Sendable types
+          [/(\b(?:private|internal|public|fileprivate)?\s*)weak\s+(?:let|var)\s+runtime:/g, '$1nonisolated(unsafe) weak var runtime:'],
+          // Avoid duplicate nonisolated(unsafe) if run repeatedly
+          [/nonisolated\(unsafe\)\s+nonisolated\(unsafe\)/g, 'nonisolated(unsafe)'],
           // Remove trailing comma in closure parameter list
           [/(_ arguments:\s*consuming\s*JavaScriptValuesBuffer),(\s*\n\s*\))/g, '$1$2']
         ]);
