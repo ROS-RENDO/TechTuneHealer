@@ -44,24 +44,15 @@ jobs:
 
       - name: Build Unsigned App for Physical Device (ARM64)
         run: |
-          WORKSPACE=$(find ios -name "*.xcworkspace" | head -n 1)
-          SCHEME=$(xcodebuild -workspace "$WORKSPACE" -list -json | jq -r '.workspace.schemes[0]')
-          echo "Selected Workspace: $WORKSPACE"
+          # Target the root CocoaPods workspace, NOT the inner .xcodeproj workspace!
+          WORKSPACE=$(find ios -maxdepth 1 -name "*.xcworkspace" | head -n 1)
+          SCHEME=$(xcodebuild -workspace "$WORKSPACE" -list -json | jq -r '.workspace.schemes[] | select(. == "TechTuneHealer" or . == "TechTune Healer")' | head -n 1)
+          if [ -z "$SCHEME" ]; then
+            SCHEME="TechTuneHealer"
+          fi
+          echo "Selected CocoaPods Workspace: $WORKSPACE"
           echo "Selected Scheme: $SCHEME"
 
-          # 1. Build Pods first to generate all Expo module maps
-          echo "=== 1. Compiling Pods Frameworks ==="
-          xcodebuild \
-            -workspace "$WORKSPACE" \
-            -scheme "Pods-$SCHEME" \
-            -configuration Release \
-            -destination "generic/platform=iOS" \
-            CODE_SIGNING_ALLOWED=NO \
-            CODE_SIGNING_REQUIRED=NO \
-            build || true
-
-          # 2. Compile main app with module maps ready
-          echo "=== 2. Compiling Main App ==="
           xcodebuild \
             -workspace "$WORKSPACE" \
             -scheme "$SCHEME" \
