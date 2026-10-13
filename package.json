@@ -11,7 +11,8 @@
     "lint": "expo lint",
     "test:qa": "npm --prefix backend run test:qa",
     "test:playwright": "npm --prefix backend run test:playwright",
-    "test:playwright:report": "npm --prefix backend run test:playwright:report"
+    "test:playwright:report": "npm --prefix backend run test:playwright:report",
+    "postinstall": "node scripts/patch-swiftpm.js"
   },
   "dependencies": {
     "@expo/vector-icons": "^15.0.3",
