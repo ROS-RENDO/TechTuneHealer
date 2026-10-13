@@ -1,0 +1,94 @@
+name: Build iOS Sideloadable IPA
+
+on:
+  workflow_dispatch:
+    inputs:
+      create_release:
+        description: 'Publish as a GitHub Release (direct link)'
+        required: false
+        type: boolean
+        default: true
+
+jobs:
+  build-ipa:
+    name: Build Unsigned iOS IPA (ARM64 Physical Device)
+    runs-on: macos-14
+    timeout-minutes: 45
+
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Select Xcode Version
+        run: sudo xcode-select -s /Applications/Xcode_16.app || sudo xcode-select -s /Applications/Xcode.app
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: 'npm'
+          cache-dependency-path: package-lock.json
+
+      - name: Install Dependencies
+        run: npm ci --legacy-peer-deps
+
+      - name: Expo Prebuild (Generate iOS Native Project)
+        run: npx expo prebuild --platform ios --clean
+
+      - name: Install CocoaPods
+        run: |
+          cd ios
+          pod install
+
+      - name: Build Unsigned Archive for Physical Device
+        run: |
+          WORKSPACE=$(find ios -name "*.xcworkspace" | head -n 1)
+          SCHEME=$(xcodebuild -workspace "$WORKSPACE" -list -json | jq -r '.workspace.schemes[0]')
+          echo "Selected Workspace: $WORKSPACE"
+          echo "Selected Scheme: $SCHEME"
+
+          xcodebuild archive \
+            -workspace "$WORKSPACE" \
+            -scheme "$SCHEME" \
+            -configuration Release \
+            -sdk iphoneos \
+            -archivePath "$RUNNER_TEMP/TechTuneHealer.xcarchive" \
+            CODE_SIGNING_ALLOWED=NO \
+            CODE_SIGNING_REQUIRED=NO \
+            CODE_SIGN_IDENTITY=""
+
+      - name: Package Payload into IPA
+        run: |
+          mkdir -p Payload
+          APP_PATH=$(find "$RUNNER_TEMP/TechTuneHealer.xcarchive/Products/Applications" -name "*.app" | head -n 1)
+          echo "Packaging application from: $APP_PATH"
+          cp -r "$APP_PATH" Payload/
+          zip -r TechTuneHealer-sideload.ipa Payload
+          ls -lh TechTuneHealer-sideload.ipa
+
+      - name: Upload IPA as GitHub Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: TechTuneHealer-sideload-ipa
+          path: TechTuneHealer-sideload.ipa
+          retention-days: 7
+
+      - name: Create GitHub Release with IPA Download
+        if: ${{ github.event.inputs.create_release != 'false' }}
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: sideload-v1.0.0-${{ github.run_number }}
+          name: "TechTune Healer Sideload IPA (Build #${{ github.run_number }})"
+          body: |
+            ### 📱 TechTune Healer iOS IPA (Physical Device)
+            This `.ipa` is compiled for physical iPhone hardware (`arm64` / `iphoneos`).
+            
+            #### 🛠 How to Install with Sideloadly:
+            1. Download `TechTuneHealer-sideload.ipa` below.
+            2. Connect your iPhone to your PC via USB and open **Sideloadly**.
+            3. Drag and drop `TechTuneHealer-sideload.ipa` into Sideloadly.
+            4. Enter your personal Apple ID (free) and click **Start**.
+            5. On your iPhone: Go to **Settings > General > VPN & Device Management** and trust your certificate.
+          files: TechTuneHealer-sideload.ipa
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

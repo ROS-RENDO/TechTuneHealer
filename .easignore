@@ -1,0 +1,68 @@
+# Dependencies
+node_modules/
+**/node_modules/
+
+# Non-mobile codebases
+backend/
+backend/**
+admin-web/
+admin-web/**
+replica/
+specs/
+images/
+logo-design-skill/
+
+# Developer tools, skills, CI & IDE
+.agents/
+.claude/
+.specify/
+.scannerwork/
+.github/
+.vscode/
+.idea/
+.next/
+**/.next/
+playwright-report/
+test-results/
+
+# 3D models (not imported by mobile app)
+*.glb
+assets/*.glb
+
+# Presentation posters and graphic banners
+assets/*poster*.jpg
+assets/*banner*.jpg
+*.jpg
+*.jpeg
+*.png
+!assets/icon.png
+!assets/splash.png
+!assets/adaptive-icon.png
+!assets/favicon.png
+!assets/logo.png
+!assets/logo-white.png
+!assets/logo-transparent.png
+!assets/logo-original.png
+!assets/rendo_aba_khqr.jpg
+!assets/branding/**
+
+# Document archives and helper scripts
+*.zip
+*.tar.gz
+*.docx
+*.pdf
+*.log
+*.html
+*.csv
+scripts_*.py
+scripts_*.ps1
+git_commit_helper.*
+report.md
+TechTune_Healer_*.md
+TechTune_Healer_*.docx
+
+# Build artifacts
+dist/
+build/
+.expo/
+.expo-shared/

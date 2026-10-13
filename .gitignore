@@ -18,3 +18,9 @@ backend/uploads/
 backend/src/generated/
 .scannerwork/
 *.zip
+playwright-report/
+test-results/
+logo-design-skill/
+*.pdf
+techtune-defense-poster.html
+*.ipa

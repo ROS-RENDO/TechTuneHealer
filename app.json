@@ -19,6 +19,7 @@
       "supportsTablet": true,
       "bundleIdentifier": "com.techtune.healer",
       "infoPlist": {
+        "ITSAppUsesNonExemptEncryption": false,
         "NSLocationWhenInUseUsageDescription": "TechTune Healer needs your location to find nearby mechanics.",
         "NSLocationAlwaysUsageDescription": "TechTune Healer needs your location for emergency assistance."
       }
@@ -31,7 +32,9 @@
       "package": "com.techtune.healer",
       "permissions": [
         "ACCESS_FINE_LOCATION",
-        "ACCESS_COARSE_LOCATION"
+        "ACCESS_COARSE_LOCATION",
+        "android.permission.ACCESS_COARSE_LOCATION",
+        "android.permission.ACCESS_FINE_LOCATION"
       ]
     },
     "web": {
@@ -50,6 +53,13 @@
       "expo-splash-screen",
       "expo-status-bar",
       "expo-web-browser"
-    ]
+    ],
+    "extra": {
+      "router": {},
+      "eas": {
+        "projectId": "cdabce21-86b1-4459-932e-2815c92fbba2"
+      }
+    },
+    "owner": "rosrendo"
   }
 }
