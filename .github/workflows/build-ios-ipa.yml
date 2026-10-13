@@ -12,17 +12,18 @@ on:
 jobs:
   build-ipa:
     name: Build Unsigned iOS IPA (ARM64 Physical Device)
-    runs-on: macos-14
+    runs-on: macos-15
     timeout-minutes: 45
 
     steps:
       - name: Checkout Repository
         uses: actions/checkout@v4
 
-      - name: Select Xcode Version
+      - name: Select Xcode Version (Swift 6.2+ Native)
         run: |
-          sudo xcode-select -s /Applications/Xcode_16.2.app/Contents/Developer
+          sudo xcode-select -s /Applications/Xcode_16.4.app/Contents/Developer || sudo xcode-select -s /Applications/Xcode.app/Contents/Developer
           sudo xcodebuild -license accept
+          xcodebuild -version
 
       - name: Setup Node.js
         uses: actions/setup-node@v4
@@ -33,10 +34,6 @@ jobs:
 
       - name: Install Dependencies
         run: npm ci --legacy-peer-deps
-
-      - name: Patch Swift Tools Version for Xcode 16.2 (6.2 -> 6.0)
-        run: |
-          find node_modules -name "Package.swift" -exec sed -i '' 's/swift-tools-version: 6.2/swift-tools-version: 6.0/g' {} +
 
       - name: Expo Prebuild (Generate iOS Native Project)
         run: npx expo prebuild --platform ios --clean
