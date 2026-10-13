@@ -8,8 +8,9 @@ import { Button } from '../../components/Button';
 import { AnimatedEntrance } from '../../components';
 import axios from 'axios';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { API_BASE_URL } from '../../config/api';
 
-const API_URL = process.env.EXPO_PUBLIC_API_URL || 'http://localhost:4000';
+const API_URL = API_BASE_URL;
 
 export function ProductDetailScreen() {
   const navigation = useNavigation();

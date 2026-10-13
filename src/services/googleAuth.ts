@@ -5,9 +5,11 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useAuthStore } from '../store';
 import { Alert, Platform } from 'react-native';
 
+import { API_BASE_URL } from '../config/api';
+
 WebBrowser.maybeCompleteAuthSession();
 
-const API_URL = process.env.EXPO_PUBLIC_API_URL || 'http://192.168.100.171:4000';
+const API_URL = API_BASE_URL;
 
 export interface GoogleUserProfile {
   id: string;

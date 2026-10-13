@@ -35,8 +35,7 @@ import { colors, spacing, fontSize, fontWeight, borderRadius, shadows } from '..
 import { AnimatedEntrance } from '../../components';
 import { useBookingStore, useAuthStore, useLocationStore } from '../../store';
 import api from '../../services/api';
-
-const WS_URL = process.env.EXPO_PUBLIC_API_URL || 'https://api.techtunehealer.com';
+import { WS_URL } from '../../config/api';
 
 // ── Interactive Drag to Confirm / Slide to Action Component ──────────────
 interface SlideToConfirmProps {

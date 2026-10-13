@@ -5,7 +5,9 @@ import { Ionicons } from '@expo/vector-icons';
 import { colors, spacing, fontSize, fontWeight, borderRadius, shadows } from '../../constants/theme';
 import axios from 'axios';
 
-const API_URL = process.env.EXPO_PUBLIC_API_URL || 'http://localhost:4000';
+import { API_BASE_URL } from '../../config/api';
+
+const API_URL = API_BASE_URL;
 
 export function AdminDashboardScreen() {
   const [data, setData] = useState<any>(null);

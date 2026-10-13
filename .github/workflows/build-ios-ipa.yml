@@ -3,6 +3,11 @@ name: Build iOS Sideloadable IPA
 on:
   workflow_dispatch:
     inputs:
+      api_url:
+        description: 'Backend API URL (e.g. http://192.168.100.171:4000)'
+        required: false
+        type: string
+        default: 'http://192.168.100.171:4000'
       create_release:
         description: 'Publish as a GitHub Release (direct link)'
         required: false
@@ -16,6 +21,8 @@ jobs:
     timeout-minutes: 45
     permissions:
       contents: write
+    env:
+      EXPO_PUBLIC_API_URL: ${{ github.event.inputs.api_url || 'http://192.168.100.171:4000' }}
 
     steps:
       - name: Checkout Repository

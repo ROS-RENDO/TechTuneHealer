@@ -44,7 +44,7 @@ export type Region = {
   longitudeDelta: number;
 };
 
-const WS_URL = process.env.EXPO_PUBLIC_API_URL || 'https://api.techtunehealer.com';
+import { WS_URL } from '../../config/api';
 
 type LocationPoint = { latitude: number; longitude: number };
 

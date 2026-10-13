@@ -20,8 +20,9 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useLocationStore, useProviderSearchStore, useTranslation } from '../../store';
 import { getFormattedDistance, getProviderAvatarUrl } from '../../utils/helpers';
 import type { ServiceProvider } from '../../types';
+import { API_BASE_URL } from '../../config/api';
 
-const API_URL = process.env.EXPO_PUBLIC_API_URL || 'http://localhost:4000';
+const API_URL = API_BASE_URL;
 
 export function AiDiagnosisResultScreen() {
   const navigation = useNavigation<any>();

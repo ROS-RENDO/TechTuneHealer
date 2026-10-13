@@ -1,8 +1,7 @@
 import { User, ServiceProvider, Booking, Vehicle, Review } from '../types';
 
 import AsyncStorage from "@react-native-async-storage/async-storage";
-
-const API_BASE_URL = process.env.EXPO_PUBLIC_API_URL || 'https://api.techtunehealer.com';
+import { API_BASE_URL } from '../config/api';
 
 class ApiError extends Error {
   status: number;

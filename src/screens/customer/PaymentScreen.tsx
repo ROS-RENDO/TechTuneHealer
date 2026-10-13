@@ -26,8 +26,10 @@ import axios from 'axios';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { format } from 'date-fns';
 
+import { API_BASE_URL } from '../../config/api';
+
 const RENDO_ABA_QR = require('../../../assets/rendo_aba_khqr.jpg');
-const API_URL = process.env.EXPO_PUBLIC_API_URL || 'http://localhost:4000';
+const API_URL = API_BASE_URL;
 const USD_TO_KHR = 4100;
 const { width } = Dimensions.get('window');
 

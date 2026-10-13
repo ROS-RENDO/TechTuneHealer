@@ -10,8 +10,9 @@ import { colors, spacing, fontSize, fontWeight, borderRadius, shadows } from '..
 import { AnimatedEntrance } from '../../components';
 import axios from 'axios';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { API_BASE_URL } from '../../config/api';
 
-const API_URL = process.env.EXPO_PUBLIC_API_URL || 'http://localhost:4000';
+const API_URL = API_BASE_URL;
 
 const DEMO_CART = {
   items: [

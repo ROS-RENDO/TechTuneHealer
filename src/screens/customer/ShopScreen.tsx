@@ -20,8 +20,10 @@ import { colors, spacing, shadows } from '../../constants/theme';
 import { AnimatedEntrance } from '../../components';
 import axios from 'axios';
 
+import { API_BASE_URL } from '../../config/api';
+
 const { width } = Dimensions.get('window');
-const API_URL = process.env.EXPO_PUBLIC_API_URL || 'http://localhost:4000';
+const API_URL = API_BASE_URL;
 
 interface Product {
   id: string;
