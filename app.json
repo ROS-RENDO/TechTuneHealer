@@ -20,6 +20,9 @@
       "bundleIdentifier": "com.techtune.healer",
       "infoPlist": {
         "ITSAppUsesNonExemptEncryption": false,
+        "NSAppTransportSecurity": {
+          "NSAllowsArbitraryLoads": true
+        },
         "NSLocationWhenInUseUsageDescription": "TechTune Healer needs your location to find nearby mechanics.",
         "NSLocationAlwaysUsageDescription": "TechTune Healer needs your location for emergency assistance."
       }

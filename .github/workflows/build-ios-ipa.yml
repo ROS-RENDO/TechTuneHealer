@@ -20,7 +20,9 @@ jobs:
         uses: actions/checkout@v4
 
       - name: Select Xcode Version
-        run: sudo xcode-select -s /Applications/Xcode_16.1.app || sudo xcode-select -s /Applications/Xcode_16.2.app || sudo xcode-select -s /Applications/Xcode_16.app
+        run: |
+          sudo xcode-select -s /Applications/Xcode_16.2.app/Contents/Developer || sudo xcode-select -s /Applications/Xcode_16.1.app/Contents/Developer
+          sudo xcodebuild -license accept
 
       - name: Setup Node.js
         uses: actions/setup-node@v4
@@ -40,27 +42,28 @@ jobs:
           cd ios
           pod install
 
-      - name: Build Unsigned Archive for Physical Device
+      - name: Build Unsigned App for Physical Device (ARM64)
         run: |
           WORKSPACE=$(find ios -name "*.xcworkspace" | head -n 1)
           SCHEME=$(xcodebuild -workspace "$WORKSPACE" -list -json | jq -r '.workspace.schemes[0]')
           echo "Selected Workspace: $WORKSPACE"
           echo "Selected Scheme: $SCHEME"
 
-          xcodebuild archive \
+          xcodebuild \
             -workspace "$WORKSPACE" \
             -scheme "$SCHEME" \
             -configuration Release \
             -destination "generic/platform=iOS" \
-            -archivePath "$RUNNER_TEMP/TechTuneHealer.xcarchive" \
+            -derivedDataPath "$RUNNER_TEMP/DerivedData" \
             CODE_SIGNING_ALLOWED=NO \
             CODE_SIGNING_REQUIRED=NO \
-            CODE_SIGN_IDENTITY=""
+            CODE_SIGN_IDENTITY="" \
+            build
 
       - name: Package Payload into IPA
         run: |
           mkdir -p Payload
-          APP_PATH=$(find "$RUNNER_TEMP/TechTuneHealer.xcarchive/Products/Applications" -name "*.app" | head -n 1)
+          APP_PATH=$(find "$RUNNER_TEMP/DerivedData/Build/Products/Release-iphoneos" -name "*.app" | head -n 1)
           echo "Packaging application from: $APP_PATH"
           cp -r "$APP_PATH" Payload/
           zip -r TechTuneHealer-sideload.ipa Payload
