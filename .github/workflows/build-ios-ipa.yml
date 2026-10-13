@@ -34,6 +34,10 @@ jobs:
       - name: Install Dependencies
         run: npm ci --legacy-peer-deps
 
+      - name: Patch Swift Tools Version for Xcode 16.2 (6.2 -> 6.0)
+        run: |
+          find node_modules -name "Package.swift" -exec sed -i '' 's/swift-tools-version: 6.2/swift-tools-version: 6.0/g' {} +
+
       - name: Expo Prebuild (Generate iOS Native Project)
         run: npx expo prebuild --platform ios --clean
 
@@ -44,7 +48,6 @@ jobs:
 
       - name: Build Unsigned App for Physical Device (ARM64)
         run: |
-          # Target the root CocoaPods workspace, NOT the inner .xcodeproj workspace!
           WORKSPACE=$(find ios -maxdepth 1 -name "*.xcworkspace" | head -n 1)
           SCHEME=$(xcodebuild -workspace "$WORKSPACE" -list -json | jq -r '.workspace.schemes[] | select(. == "TechTuneHealer" or . == "TechTune Healer")' | head -n 1)
           if [ -z "$SCHEME" ]; then
